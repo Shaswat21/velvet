@@ -2,7 +2,7 @@ export type ToolType = "select" | "hand" | "draw-rect";
 
 export interface BaseObject {
   id: string;
-  type: "text" | "rect" | "image";
+  type: "text" | "rect" | "image" | "group";
   x: number;
   y: number;
   width: number;
@@ -38,4 +38,11 @@ export interface ImageObject extends BaseObject {
   strokeWidth: number;
 }
 
-export type CanvasObject = TextObject | RectObject | ImageObject;
+export interface GroupObject extends BaseObject {
+  type: "group";
+  objects: CanvasObject[];
+  originalWidth: number;
+  originalHeight: number;
+}
+
+export type CanvasObject = TextObject | RectObject | ImageObject | GroupObject;

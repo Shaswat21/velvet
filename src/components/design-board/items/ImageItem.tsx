@@ -9,7 +9,7 @@ interface ImageItemProps {
   setDragTarget: (target: any) => void;
   setSelectedId: (id: string | null) => void;
   setResizingTarget: (target: any) => void;
-  setRotatingTarget: (target: any) => void;
+  setRotatingTarget: (e: React.MouseEvent, id: string) => void;
   innerRef?: (el: HTMLDivElement | null) => void;
 }
 

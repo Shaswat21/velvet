@@ -90,9 +90,7 @@ export const Toolbar = ({
               size="icon"
               variant={selectedObject.isBold ? "outline" : "ghost"}
               className="h-7 w-7 rounded-sm"
-              onClick={() =>
-                updateSelected({ isBold: !selectedObject.isBold })
-              }
+              onClick={() => updateSelected({ isBold: !selectedObject.isBold })}
             >
               <Bold className="h-3.5 w-3.5" />
             </Button>
@@ -263,20 +261,18 @@ export const Toolbar = ({
       )}
 
       {/* --- COMMON: ROTATION (FOR ALL) --- */}
-      <div className="h-6 w-px bg-gray-300 mx-1"></div>
       <div className="flex items-center h-8 border rounded-md px-2 bg-white gap-1">
         <RotateCw className="h-3 w-3 text-gray-400" />
         <input
           type="number"
           value={Math.round(selectedObject.rotation)}
-          onChange={(e) =>
-            updateSelected({ rotation: Number(e.target.value) })
-          }
+          onChange={(e) => updateSelected({ rotation: Number(e.target.value) })}
           className="w-10 text-xs text-center outline-none bg-transparent"
           title="Rotation Angle"
         />
         <span className="text-[10px] text-gray-400">°</span>
       </div>
+      <div className="h-6 w-px bg-gray-300 mx-1"></div>
 
       <Button
         variant="ghost"

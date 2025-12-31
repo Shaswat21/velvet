@@ -11,8 +11,9 @@ interface TextItemProps {
   setDragTarget: (target: any) => void;
   setSelectedId: (id: string | null) => void;
   setResizingTarget: (target: any) => void;
-  setRotatingTarget: (target: any) => void;
-  innerRef?: React.Ref<HTMLDivElement>;
+  setRotatingTarget: (e: React.MouseEvent, id: string) => void;
+  innerRef?: (el: HTMLDivElement | null) => void;
+  pointerEvents?: "auto" | "none"; // NEW PROP
 }
 
 export const TextItem = ({
@@ -26,6 +27,7 @@ export const TextItem = ({
   setResizingTarget,
   setRotatingTarget,
   innerRef,
+  pointerEvents, // Destructure new prop
 }: TextItemProps) => {
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const zoomFactor = zoom / 100;
@@ -45,6 +47,7 @@ export const TextItem = ({
       tool={tool}
       setResizingTarget={setResizingTarget}
       setRotatingTarget={setRotatingTarget}
+      pointerEvents={pointerEvents} // Pass it down to Wrapper
       onMouseDown={(e) => {
         if (tool !== "select") return;
         e.stopPropagation();
@@ -74,6 +77,9 @@ export const TextItem = ({
             fontStyle: obj.isItalic ? "italic" : "normal",
             textDecoration: obj.isUnderline ? "underline" : "none",
             height: "100%",
+            // Important: If we are in a group (pointerEvents="none"),
+            // ensure the textarea itself doesn't steal focus
+            pointerEvents: pointerEvents === "none" ? "none" : "auto",
           }}
           readOnly={tool === "hand"}
         />

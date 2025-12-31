@@ -9,15 +9,11 @@ interface RectItemProps {
   setDragTarget: (target: any) => void;
   setSelectedId: (id: string | null) => void;
   setResizingTarget: (target: any) => void;
-  setRotatingTarget: (target: any) => void;
+  setRotatingTarget: (e: React.MouseEvent, id: string) => void;
   innerRef?: React.Ref<HTMLDivElement>;
 }
 
-export const RectItem = ({
-  obj,
-  innerRef,
-  ...props
-}: RectItemProps) => {
+export const RectItem = ({ obj, innerRef, ...props }: RectItemProps) => {
   return (
     <TransformWrapper
       obj={obj}
