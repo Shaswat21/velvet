@@ -1,8 +1,17 @@
-export function App() {
+import { BrowserRouter, Routes, Route } from "react-router-dom"
+import Home from "@/pages/Home"
+import Login from "@/pages/Login"
+import Register from "@/pages/Register"
+
+function App() {
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="font-medium">Hello World</div>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
