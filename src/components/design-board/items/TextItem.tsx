@@ -1,6 +1,6 @@
 import { useRef, useLayoutEffect } from "react";
 import { TransformWrapper } from "./TransformWrapper";
-import type { TextObject, ToolType } from "../types";
+import type { TextObject, ToolType } from "@/lib/types";
 
 interface TextItemProps {
   obj: TextObject;

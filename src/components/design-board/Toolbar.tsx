@@ -18,8 +18,8 @@ import {
   RotateCw, // Ensure this is imported
 } from "lucide-react";
 import { ColorPicker } from "./ui/ColorPicker";
-import { FONTS } from "./constants";
-import type { CanvasObject } from "./types";
+import { FONTS } from "@/lib/constants";
+import type { CanvasObject } from "@/lib/types";
 
 interface ToolbarProps {
   selectedObject: CanvasObject | undefined;

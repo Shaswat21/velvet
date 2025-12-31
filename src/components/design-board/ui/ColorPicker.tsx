@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { PRESET_COLORS } from "../constants";
+import { PRESET_COLORS } from "../../../lib/constants";
 
 interface ColorPickerProps {
   value: string;

@@ -5,7 +5,7 @@ import {
   ArrowLeft, Hand, MousePointer2, Type, Image as ImageIcon, Trash2, Square, Group, Ungroup 
 } from "lucide-react";
 import { ColorPicker } from "./ui/ColorPicker";
-import type { ToolType } from "./types";
+import type { ToolType } from "@/lib/types";
 import type { PaperKey, Orientation } from "@/pages/Home";
 
 interface HeaderProps {

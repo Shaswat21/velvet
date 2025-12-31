@@ -2,7 +2,7 @@ import { TransformWrapper } from "./TransformWrapper";
 import { TextItem } from "./TextItem";
 import { RectItem } from "./RectItem";
 import { ImageItem } from "./ImageItem";
-import type { GroupObject, ToolType } from "../types";
+import type { GroupObject, ToolType } from "@/lib/types";
 
 interface GroupItemProps {
   obj: GroupObject;

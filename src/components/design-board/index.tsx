@@ -7,7 +7,7 @@ import {
   ContextMenuSeparator,
 } from "@/components/ui/context-menu";
 import type { Orientation, PaperKey } from "@/pages/Home";
-import { PAPER_SIZES } from "./constants";
+import { PAPER_SIZES } from "@/lib/constants";
 import type {
   ToolType,
   CanvasObject,
@@ -15,8 +15,8 @@ import type {
   RectObject,
   ImageObject,
   GroupObject,
-} from "./types";
-import { getRotatedBoundingBox, rotatePoint } from "./utils";
+} from "@/lib/types";
+import { getRotatedBoundingBox, rotatePoint } from "@/lib/utils";
 
 import { Header } from "./Header";
 import { Toolbar } from "./Toolbar";

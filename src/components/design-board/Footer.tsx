@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Check } from "lucide-react";
-import { ZOOM_PRESETS } from "./constants";
+import { ZOOM_PRESETS } from "@/lib/constants";
 
 interface FooterProps {
   zoom: number[];

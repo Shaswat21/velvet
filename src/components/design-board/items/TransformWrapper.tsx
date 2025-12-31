@@ -1,5 +1,5 @@
 import { Move, RotateCw } from "lucide-react";
-import type { CanvasObject, ToolType } from "../types";
+import type { CanvasObject, ToolType } from "@/lib/types";
 
 interface TransformWrapperProps {
   children: React.ReactNode;

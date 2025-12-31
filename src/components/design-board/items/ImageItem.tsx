@@ -1,5 +1,5 @@
 import { TransformWrapper } from "./TransformWrapper";
-import type { ImageObject, ToolType } from "../types";
+import type { ImageObject, ToolType } from "@/lib/types";
 
 interface ImageItemProps {
   obj: ImageObject;

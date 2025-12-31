@@ -1,5 +1,5 @@
 import { TransformWrapper } from "./TransformWrapper";
-import type { RectObject, ToolType } from "../types";
+import type { RectObject, ToolType } from "@/lib/types";
 
 interface RectItemProps {
   obj: RectObject;
