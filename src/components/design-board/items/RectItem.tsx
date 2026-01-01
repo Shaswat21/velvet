@@ -8,20 +8,36 @@ interface RectItemProps {
   tool: ToolType;
   setDragTarget: (target: any) => void;
   setSelectedId: (id: string | null) => void;
+  addSelectedId: (id: string) => void; // New prop
   setResizingTarget: (target: any) => void;
   setRotatingTarget: (e: React.MouseEvent, id: string) => void;
-  innerRef?: React.Ref<HTMLDivElement>;
+  innerRef?: (el: HTMLDivElement | null) => void;
+  pointerEvents?: "auto" | "none";
 }
 
-export const RectItem = ({ obj, innerRef, ...props }: RectItemProps) => {
+export const RectItem = ({
+  obj,
+  innerRef,
+  pointerEvents,
+  addSelectedId,
+  ...props
+}: RectItemProps) => {
   return (
     <TransformWrapper
       obj={obj}
+      pointerEvents={pointerEvents}
       {...props}
       onMouseDown={(e) => {
         if (props.tool !== "select") return;
         e.stopPropagation();
-        props.setSelectedId(obj.id);
+
+        // Multi-select Logic
+        if (e.shiftKey || e.ctrlKey || e.metaKey) {
+          addSelectedId(obj.id);
+        } else {
+          props.setSelectedId(obj.id);
+        }
+
         props.setDragTarget({ id: obj.id });
       }}
     >

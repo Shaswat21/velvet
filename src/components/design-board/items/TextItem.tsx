@@ -10,10 +10,11 @@ interface TextItemProps {
   onUpdate: (id: string, updates: Partial<TextObject>) => void;
   setDragTarget: (target: any) => void;
   setSelectedId: (id: string | null) => void;
+  addSelectedId: (id: string) => void; // New prop
   setResizingTarget: (target: any) => void;
   setRotatingTarget: (e: React.MouseEvent, id: string) => void;
   innerRef?: (el: HTMLDivElement | null) => void;
-  pointerEvents?: "auto" | "none"; // NEW PROP
+  pointerEvents?: "auto" | "none";
 }
 
 export const TextItem = ({
@@ -24,10 +25,11 @@ export const TextItem = ({
   onUpdate,
   setDragTarget,
   setSelectedId,
+  addSelectedId,
   setResizingTarget,
   setRotatingTarget,
   innerRef,
-  pointerEvents, // Destructure new prop
+  pointerEvents,
 }: TextItemProps) => {
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const zoomFactor = zoom / 100;
@@ -47,11 +49,18 @@ export const TextItem = ({
       tool={tool}
       setResizingTarget={setResizingTarget}
       setRotatingTarget={setRotatingTarget}
-      pointerEvents={pointerEvents} // Pass it down to Wrapper
+      pointerEvents={pointerEvents}
       onMouseDown={(e) => {
         if (tool !== "select") return;
         e.stopPropagation();
-        setSelectedId(obj.id);
+
+        // Multi-select Logic
+        if (e.shiftKey || e.ctrlKey || e.metaKey) {
+          addSelectedId(obj.id);
+        } else {
+          setSelectedId(obj.id);
+        }
+
         setDragTarget({
           id: obj.id,
           offsetX: e.nativeEvent.offsetX,
@@ -77,8 +86,6 @@ export const TextItem = ({
             fontStyle: obj.isItalic ? "italic" : "normal",
             textDecoration: obj.isUnderline ? "underline" : "none",
             height: "100%",
-            // Important: If we are in a group (pointerEvents="none"),
-            // ensure the textarea itself doesn't steal focus
             pointerEvents: pointerEvents === "none" ? "none" : "auto",
           }}
           readOnly={tool === "hand"}

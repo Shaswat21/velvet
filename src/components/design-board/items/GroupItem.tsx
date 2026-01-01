@@ -29,7 +29,8 @@ export const GroupItem = ({ obj, innerRef, ...props }: GroupItemProps) => {
       onMouseDown={(e) => {
         if (props.tool !== "select") return;
         e.stopPropagation();
-        if (e.shiftKey) {
+        // Check for multiple selection keys
+        if (e.shiftKey || e.ctrlKey || e.metaKey) {
           props.addSelectedId(obj.id);
         } else {
           props.setSelectedId(obj.id);
@@ -55,22 +56,19 @@ export const GroupItem = ({ obj, innerRef, ...props }: GroupItemProps) => {
             tool: props.tool,
             setDragTarget: () => {},
             setSelectedId: () => {},
-            addSelectedId: () => {}, // Added to satisfy prop requirements
+            addSelectedId: () => {},
             setResizingTarget: () => {},
             setRotatingTarget: () => {},
             onUpdate: () => {},
             pointerEvents: "none" as const,
           };
 
-          if (child.type === "text") {
+          if (child.type === "text")
             return <TextItem obj={child} {...commonProps} />;
-          }
-          if (child.type === "rect") {
+          if (child.type === "rect")
             return <RectItem obj={child} {...commonProps} />;
-          }
-          if (child.type === "image") {
+          if (child.type === "image")
             return <ImageItem obj={child} {...commonProps} />;
-          }
           return null;
         })}
       </div>

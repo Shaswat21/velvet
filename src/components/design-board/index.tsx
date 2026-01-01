@@ -43,7 +43,7 @@ export default function DesignBoard({
   // Interaction State
   const isDragging = useRef(false);
   const isDrawing = useRef(false);
-  const isSelecting = useRef(false); // Box Selection
+  const isSelecting = useRef(false);
 
   const startX = useRef(0);
   const startY = useRef(0);
@@ -61,10 +61,7 @@ export default function DesignBoard({
   const [zoom, setZoom] = useState<number[]>([40]);
   const [tool, setTool] = useState<ToolType>("select");
   const [objects, setObjects] = useState<CanvasObject[]>([]);
-
-  // Multi-select State
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
   const [bgColor, setBgColor] = useState("#ffffff");
   const [isClosingToolbar, setIsClosingToolbar] = useState(false);
 
@@ -84,8 +81,8 @@ export default function DesignBoard({
     id: string;
     cx: number;
     cy: number;
-    startAngle: number; // Mouse angle at click
-    initialRotation: number; // Object rotation at click
+    startAngle: number;
+    initialRotation: number;
   } | null>(null);
 
   const singleSelectedObject =
@@ -107,6 +104,19 @@ export default function DesignBoard({
     return { x, y };
   };
 
+  const cloneCanvasObject = (obj: CanvasObject): CanvasObject => {
+    const newId = Math.random().toString(36).substr(2, 9);
+    if (obj.type === "group") {
+      return {
+        ...obj,
+        id: newId,
+        objects: obj.objects.map((child: any) => cloneCanvasObject(child)),
+      };
+    }
+    return { ...obj, id: newId };
+  };
+
+  /* --- ACTIONS --- */
   const updateObject = (id: string, updates: Partial<CanvasObject>) => {
     setObjects((prev) =>
       prev.map(
@@ -127,20 +137,121 @@ export default function DesignBoard({
     }, 300);
   };
 
-  /* --- GROUPING LOGIC --- */
+  const handleStartRotation = (e: React.MouseEvent, id: string) => {
+    const obj = objects.find((o) => o.id === id);
+    const canvasEl = canvasRef.current;
+
+    if (obj && canvasEl) {
+      const canvasRect = canvasEl.getBoundingClientRect();
+      const zoomFactor = zoom[0] / 100;
+      const cx = canvasRect.left + (obj.x + obj.width / 2) * zoomFactor;
+      const cy = canvasRect.top + (obj.y + obj.height / 2) * zoomFactor;
+      const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx);
+
+      setRotatingTarget({
+        id,
+        cx,
+        cy,
+        startAngle,
+        initialRotation: obj.rotation,
+      });
+    }
+  };
+
+  const handleDuplicate = () => {
+    if (selectedIds.length === 0) return;
+    const newObjects: CanvasObject[] = [];
+    const newSelectedIds: string[] = [];
+
+    selectedIds.forEach((id) => {
+      const original = objects.find((o) => o.id === id);
+      if (original) {
+        const cloned = cloneCanvasObject(original);
+        cloned.x += 20;
+        cloned.y += 20;
+        newObjects.push(cloned);
+        newSelectedIds.push(cloned.id);
+      }
+    });
+    setObjects((prev) => [...prev, ...newObjects]);
+    setSelectedIds(newSelectedIds);
+  };
+
+  /* --- GROUPING LOGIC (FLATTENED) --- */
   const handleGroup = () => {
     if (selectedIds.length < 2) return;
 
     const itemsToGroup = objects.filter((o) => selectedIds.includes(o.id));
     if (itemsToGroup.length === 0) return;
 
-    // 1. Calculate Visual Bounding Box
+    // Helper: Recursively flatten groups into absolute world coordinates
+    const flattenItem = (item: CanvasObject): CanvasObject[] => {
+      if (item.type !== "group") return [item];
+
+      const group = item as GroupObject;
+      const scaleX = group.width / group.originalWidth;
+      const scaleY = group.height / group.originalHeight;
+      const groupCx = group.x + group.width / 2;
+      const groupCy = group.y + group.height / 2;
+
+      return group.objects.flatMap(
+        (child: {
+          width: number;
+          height: number;
+          x: number;
+          y: number;
+          rotation: any;
+          type: string;
+        }) => {
+          // Calculate child's absolute world dimensions
+          const newChildWidth = child.width * scaleX;
+          const newChildHeight = child.height * scaleY;
+
+          // Calculate child's absolute world position
+          const childCxRelative = (child.x + child.width / 2) * scaleX;
+          const childCyRelative = (child.y + child.height / 2) * scaleY;
+          const dx = childCxRelative - group.width / 2;
+          const dy = childCyRelative - group.height / 2;
+
+          const rotatedOffset = rotatePoint(dx, dy, 0, 0, group.rotation);
+          const newWorldCx = groupCx + rotatedOffset.x;
+          const newWorldCy = groupCy + rotatedOffset.y;
+
+          // Create flat object
+          const flattenedChild: CanvasObject = {
+            ...child,
+            id: Math.random().toString(36).substr(2, 9),
+            x: newWorldCx - newChildWidth / 2,
+            y: newWorldCy - newChildHeight / 2,
+            width: newChildWidth,
+            height: newChildHeight,
+            rotation: (child.rotation + group.rotation) % 360,
+            // If child was a group, pass scaled original dims for recursion
+            ...(child.type === "group"
+              ? {
+                  originalWidth: (child as GroupObject).originalWidth * scaleX,
+                  originalHeight:
+                    (child as GroupObject).originalHeight * scaleY,
+                }
+              : {}),
+          } as CanvasObject;
+
+          // Recurse in case of nested groups
+          return flattenItem(flattenedChild);
+        }
+      );
+    };
+
+    // Flatten all selected items into a single layer
+    const flatItemsToGroup = itemsToGroup.flatMap((item) => flattenItem(item));
+
+    // 1. Calculate Visual Bounding Box of FLAT items
     let minX = Infinity,
       minY = Infinity,
       maxX = -Infinity,
       maxY = -Infinity;
 
-    itemsToGroup.forEach((obj) => {
+    flatItemsToGroup.forEach((obj) => {
       const bounds = getRotatedBoundingBox(obj);
       if (bounds.minX < minX) minX = bounds.minX;
       if (bounds.minY < minY) minY = bounds.minY;
@@ -151,8 +262,8 @@ export default function DesignBoard({
     const groupWidth = maxX - minX;
     const groupHeight = maxY - minY;
 
-    // 2. Normalize children
-    const groupedChildren = itemsToGroup.map((obj) => ({
+    // 2. Normalize children relative to new bounding box
+    const groupedChildren = flatItemsToGroup.map((obj) => ({
       ...obj,
       x: obj.x - minX,
       y: obj.y - minY,
@@ -173,7 +284,7 @@ export default function DesignBoard({
       objects: groupedChildren,
     };
 
-    // 4. Update State
+    // 4. Update State (Remove original selected IDs, add new Group)
     const remainingObjects = objects.filter((o) => !selectedIds.includes(o.id));
     setObjects([...remainingObjects, groupObj]);
     setSelectedIds([newGroupId]);
@@ -189,66 +300,46 @@ export default function DesignBoard({
     const groupCx = group.x + group.width / 2;
     const groupCy = group.y + group.height / 2;
 
-    const restoredChildren = group.objects.map((child) => {
-      const childCxRelative = (child.x + child.width / 2) * scaleX;
-      const childCyRelative = (child.y + child.height / 2) * scaleY;
-      const dx = childCxRelative - group.width / 2;
-      const dy = childCyRelative - group.height / 2;
-      const rotatedOffset = rotatePoint(dx, dy, 0, 0, group.rotation);
-      const newWorldCx = groupCx + rotatedOffset.x;
-      const newWorldCy = groupCy + rotatedOffset.y;
-      const newChildWidth = child.width * scaleX;
-      const newChildHeight = child.height * scaleY;
+    const restoredChildren = group.objects.map(
+      (child: {
+        x: number;
+        width: number;
+        y: number;
+        height: number;
+        rotation: any;
+        type: string;
+      }) => {
+        const childCxRelative = (child.x + child.width / 2) * scaleX;
+        const childCyRelative = (child.y + child.height / 2) * scaleY;
+        const dx = childCxRelative - group.width / 2;
+        const dy = childCyRelative - group.height / 2;
+        const rotatedOffset = rotatePoint(dx, dy, 0, 0, group.rotation);
+        const newWorldCx = groupCx + rotatedOffset.x;
+        const newWorldCy = groupCy + rotatedOffset.y;
+        const newChildWidth = child.width * scaleX;
+        const newChildHeight = child.height * scaleY;
 
-      return {
-        ...child,
-        id: Math.random().toString(36).substr(2, 9),
-        x: newWorldCx - newChildWidth / 2,
-        y: newWorldCy - newChildHeight / 2,
-        width: newChildWidth,
-        height: newChildHeight,
-        rotation: (child.rotation + group.rotation) % 360,
-        ...(child.type === "group"
-          ? {
-              originalWidth: (child as GroupObject).originalWidth * scaleX,
-              originalHeight: (child as GroupObject).originalHeight * scaleY,
-            }
-          : {}),
-      };
-    });
+        return {
+          ...child,
+          id: Math.random().toString(36).substr(2, 9),
+          x: newWorldCx - newChildWidth / 2,
+          y: newWorldCy - newChildHeight / 2,
+          width: newChildWidth,
+          height: newChildHeight,
+          rotation: (child.rotation + group.rotation) % 360,
+          ...(child.type === "group"
+            ? {
+                originalWidth: (child as GroupObject).originalWidth * scaleX,
+                originalHeight: (child as GroupObject).originalHeight * scaleY,
+              }
+            : {}),
+        } as CanvasObject;
+      }
+    );
 
     const remaining = objects.filter((o) => o.id !== group.id);
     setObjects([...remaining, ...restoredChildren]);
-    setSelectedIds(restoredChildren.map((c) => c.id));
-  };
-
-  const handleStartRotation = (e: React.MouseEvent, id: string) => {
-    // 1. Get the object from state
-    const obj = objects.find((o) => o.id === id);
-    // 2. Get the canvas DOM element to establish the "0,0" point on screen
-    const canvasEl = canvasRef.current;
-
-    if (obj && canvasEl) {
-      const canvasRect = canvasEl.getBoundingClientRect();
-      const zoomFactor = zoom[0] / 100;
-
-      // 3. Calculate the absolute center on screen based on Data Model
-      // (obj.x + width/2) is the center relative to the canvas
-      // We multiply by zoom to get pixels, and add canvasRect.left to get screen coordinates
-      const cx = canvasRect.left + (obj.x + obj.width / 2) * zoomFactor;
-      const cy = canvasRect.top + (obj.y + obj.height / 2) * zoomFactor;
-
-      // 4. Calculate start angle
-      const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx);
-
-      setRotatingTarget({
-        id,
-        cx,
-        cy,
-        startAngle,
-        initialRotation: obj.rotation,
-      });
-    }
+    setSelectedIds(restoredChildren.map((c: { id: any }) => c.id));
   };
 
   /* --- ADD ITEMS --- */
@@ -328,6 +419,10 @@ export default function DesignBoard({
         if (e.shiftKey) handleUngroup();
         else handleGroup();
       }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        handleDuplicate();
+      }
       if (
         e.key === "Delete" ||
         (e.key === "Backspace" &&
@@ -404,6 +499,32 @@ export default function DesignBoard({
   };
 
   /* --- MOUSE EVENTS --- */
+  const handleContainerMouseDown = (e: React.MouseEvent) => {
+    if (
+      e.target === containerRef.current ||
+      (e.target as HTMLElement).classList.contains("bg-wrapper") ||
+      (e.target as HTMLElement).tagName === "CANVAS" ||
+      (e.target as HTMLElement).classList.contains("paper-canvas")
+    ) {
+      if (tool === "select") {
+        if (!e.shiftKey && !e.ctrlKey && !e.metaKey) setSelectedIds([]);
+        isSelecting.current = true;
+        selectionStartPos.current = getPointerPos(e);
+      } else if (tool === "draw-rect") {
+        isDrawing.current = true;
+        drawingStartPos.current = getPointerPos(e);
+      } else if (tool === "hand" || e.button === 1) {
+        if (!containerRef.current) return;
+        isDragging.current = true;
+        startX.current = e.pageX - containerRef.current.offsetLeft;
+        startY.current = e.pageY - containerRef.current.offsetTop;
+        scrollLeftRef.current = containerRef.current.scrollLeft;
+        scrollTopRef.current = containerRef.current.scrollTop;
+        containerRef.current.style.cursor = "grabbing";
+      }
+    }
+  };
+
   const handleGlobalMouseMove = (e: React.MouseEvent) => {
     const currentZoom = zoom[0] / 100;
     const { x, y } = getPointerPos(e);
@@ -440,11 +561,8 @@ export default function DesignBoard({
     if (rotatingTarget) {
       e.preventDefault();
       const { cx, cy, startAngle, initialRotation } = rotatingTarget;
-
       const currentAngle = Math.atan2(e.clientY - cy, e.clientX - cx);
       const angleDiff = (currentAngle - startAngle) * (180 / Math.PI);
-
-      // Update object with new rotation
       updateObject(rotatingTarget.id, {
         rotation: initialRotation + angleDiff,
       });
@@ -494,6 +612,10 @@ export default function DesignBoard({
             obj.y + obj.height > selectionBox.y
         )
         .map((o) => o.id);
+
+      // Combine with existing selection if Shift/Ctrl is held
+      // But for box selection, usually it replaces.
+      // Logic can be tweaked: if keys held, append; else replace.
       setSelectedIds(selected);
       setSelectionBox(null);
     }
@@ -518,32 +640,6 @@ export default function DesignBoard({
     setRotatingTarget(null);
     if (containerRef.current)
       containerRef.current.style.cursor = tool === "hand" ? "grab" : "";
-  };
-
-  const handleContainerMouseDown = (e: React.MouseEvent) => {
-    if (
-      e.target === containerRef.current ||
-      (e.target as HTMLElement).classList.contains("bg-wrapper") ||
-      (e.target as HTMLElement).tagName === "CANVAS" ||
-      (e.target as HTMLElement).classList.contains("paper-canvas")
-    ) {
-      if (tool === "select") {
-        if (!e.shiftKey) setSelectedIds([]);
-        isSelecting.current = true;
-        selectionStartPos.current = getPointerPos(e);
-      } else if (tool === "draw-rect") {
-        isDrawing.current = true;
-        drawingStartPos.current = getPointerPos(e);
-      } else if (tool === "hand" || e.button === 1) {
-        if (!containerRef.current) return;
-        isDragging.current = true;
-        startX.current = e.pageX - containerRef.current.offsetLeft;
-        startY.current = e.pageY - containerRef.current.offsetTop;
-        scrollLeftRef.current = containerRef.current.scrollLeft;
-        scrollTopRef.current = containerRef.current.scrollTop;
-        containerRef.current.style.cursor = "grabbing";
-      }
-    }
   };
 
   return (
@@ -688,6 +784,12 @@ export default function DesignBoard({
               </div>
             </ContextMenuTrigger>
             <ContextMenuContent>
+              {selectedIds.length > 0 && (
+                <ContextMenuItem onClick={handleDuplicate}>
+                  Duplicate
+                </ContextMenuItem>
+              )}
+              <ContextMenuSeparator />
               {selectedIds.length > 1 && (
                 <ContextMenuItem onClick={handleGroup}>Group</ContextMenuItem>
               )}
