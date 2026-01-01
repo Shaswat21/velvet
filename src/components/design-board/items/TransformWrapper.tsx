@@ -1,4 +1,4 @@
-import { Move, RotateCw } from "lucide-react";
+import { Move, RotateCw, LockIcon } from "lucide-react";
 import type { CanvasObject, ToolType } from "@/lib/types";
 
 interface TransformWrapperProps {
@@ -84,6 +84,11 @@ export const TransformWrapper = ({
         transform: `rotate(${obj.rotation}deg)`,
         transformOrigin: "center center",
         pointerEvents: effectivePointerEvents,
+        cursor: obj.isLocked
+          ? "default"
+          : pointerEvents === "none"
+          ? "default"
+          : "move",
       }}
       className="group"
     >
@@ -91,68 +96,74 @@ export const TransformWrapper = ({
 
       {isSelected && (
         <div className="absolute -inset-1 border-2 border-blue-500 pointer-events-none">
-          {!hideResizeHandles && (
-            <>
-              {/* --- CORNERS --- */}
-              {/* Top Left (NW - Base 315°) */}
-              <div
-                className={`absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
-                  315
-                )}`}
-                onMouseDown={(e) => handleResizeStart(e, "nw")}
-              />
-              {/* Top Right (NE - Base 45°) */}
-              <div
-                className={`absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
-                  45
-                )}`}
-                onMouseDown={(e) => handleResizeStart(e, "ne")}
-              />
-              {/* Bottom Left (SW - Base 225°) */}
-              <div
-                className={`absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
-                  225
-                )}`}
-                onMouseDown={(e) => handleResizeStart(e, "sw")}
-              />
-              {/* Bottom Right (SE - Base 135°) */}
-              <div
-                className={`absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
-                  135
-                )}`}
-                onMouseDown={(e) => handleResizeStart(e, "se")}
-              />
+          {obj.isLocked ? (
+            <div className="absolute -top-3 -left-3 bg-gray-100 border border-gray-400 p-1 rounded-sm shadow-sm pointer-events-auto z-50">
+              <LockIcon className="w-3 h-3 text-gray-500" />
+            </div>
+          ) : (
+            !hideResizeHandles && (
+              <>
+                {/* --- CORNERS --- */}
+                {/* Top Left (NW - Base 315°) */}
+                <div
+                  className={`absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
+                    315
+                  )}`}
+                  onMouseDown={(e) => handleResizeStart(e, "nw")}
+                />
+                {/* Top Right (NE - Base 45°) */}
+                <div
+                  className={`absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
+                    45
+                  )}`}
+                  onMouseDown={(e) => handleResizeStart(e, "ne")}
+                />
+                {/* Bottom Left (SW - Base 225°) */}
+                <div
+                  className={`absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
+                    225
+                  )}`}
+                  onMouseDown={(e) => handleResizeStart(e, "sw")}
+                />
+                {/* Bottom Right (SE - Base 135°) */}
+                <div
+                  className={`absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
+                    135
+                  )}`}
+                  onMouseDown={(e) => handleResizeStart(e, "se")}
+                />
 
-              {/* --- SIDES --- */}
-              {/* Top (N - Base 0°) */}
-              <div
-                className={`absolute left-1/2 -top-1.5 -translate-x-1/2 w-4 h-2 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
-                  0
-                )}`}
-                onMouseDown={(e) => handleResizeStart(e, "n")}
-              />
-              {/* Bottom (S - Base 180°) */}
-              <div
-                className={`absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-4 h-2 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
-                  180
-                )}`}
-                onMouseDown={(e) => handleResizeStart(e, "s")}
-              />
-              {/* Left (W - Base 270°) */}
-              <div
-                className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-4 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
-                  270
-                )}`}
-                onMouseDown={(e) => handleResizeStart(e, "w")}
-              />
-              {/* Right (E - Base 90°) */}
-              <div
-                className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-4 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
-                  90
-                )}`}
-                onMouseDown={(e) => handleResizeStart(e, "e")}
-              />
-            </>
+                {/* --- SIDES --- */}
+                {/* Top (N - Base 0°) */}
+                <div
+                  className={`absolute left-1/2 -top-1.5 -translate-x-1/2 w-4 h-2 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
+                    0
+                  )}`}
+                  onMouseDown={(e) => handleResizeStart(e, "n")}
+                />
+                {/* Bottom (S - Base 180°) */}
+                <div
+                  className={`absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-4 h-2 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
+                    180
+                  )}`}
+                  onMouseDown={(e) => handleResizeStart(e, "s")}
+                />
+                {/* Left (W - Base 270°) */}
+                <div
+                  className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-4 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
+                    270
+                  )}`}
+                  onMouseDown={(e) => handleResizeStart(e, "w")}
+                />
+                {/* Right (E - Base 90°) */}
+                <div
+                  className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-4 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
+                    90
+                  )}`}
+                  onMouseDown={(e) => handleResizeStart(e, "e")}
+                />
+              </>
+            )
           )}
 
           {/* Move Handle (Top Left External) */}

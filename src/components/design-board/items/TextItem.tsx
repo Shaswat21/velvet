@@ -16,6 +16,7 @@ interface TextItemProps {
   innerRef?: (el: HTMLDivElement | null) => void;
   pointerEvents?: "auto" | "none";
   onMouseDown?: (e: React.MouseEvent) => void;
+  isGrouped?: boolean; // NEW PROP
 }
 
 export const TextItem = ({
@@ -32,26 +33,18 @@ export const TextItem = ({
   innerRef,
   pointerEvents,
   onMouseDown,
+  isGrouped = false, // Default false
 }: TextItemProps) => {
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const zoomFactor = zoom / 100;
 
-  // AUTO-RESIZE HEIGHT LOGIC
   useLayoutEffect(() => {
     if (textAreaRef.current) {
-      // 1. Reset height to allow shrinking
       textAreaRef.current.style.height = "0px";
-
-      // 2. Measure scrollHeight
       const scrollHeight = textAreaRef.current.scrollHeight;
-
-      // 3. Set visual height
       textAreaRef.current.style.height = `${scrollHeight}px`;
 
-      // 4. Update data model height if significantly different
-      // Convert pixel height back to canvas units (divide by zoom)
       const calculatedHeight = scrollHeight / zoomFactor;
-
       if (Math.abs(obj.height - calculatedHeight) > 1) {
         onUpdate(obj.id, { height: calculatedHeight });
       }
@@ -61,7 +54,7 @@ export const TextItem = ({
     obj.width,
     obj.fontSize,
     obj.fontFamily,
-    obj.isBold, // Don't forget bold/italic affect height
+    obj.isBold,
     obj.isItalic,
     obj.isUnderline,
     zoom,
@@ -82,6 +75,9 @@ export const TextItem = ({
     });
   };
 
+  // Determine if interaction should be disabled
+  const isDisabled = tool === "hand" || obj.isLocked || isGrouped;
+
   return (
     <TransformWrapper
       obj={obj}
@@ -98,10 +94,16 @@ export const TextItem = ({
           ref={textAreaRef}
           value={obj.text}
           onChange={(e) => onUpdate(obj.id, { text: e.target.value })}
+          readOnly={isDisabled}
           className={`
             w-full bg-transparent resize-none overflow-hidden leading-normal
             focus:outline-none outline-none border-none p-1 block
-            ${isSelected ? "cursor-text" : "cursor-move"}
+            ${
+              /* Cursor Logic: Text cursor only if selected, not locked, and not grouped */ ""
+            }
+            ${isSelected && !isDisabled ? "cursor-text" : "cursor-inherit"}
+            ${/* Selection Logic: Prevent highlight if locked or grouped */ ""}
+            ${isDisabled ? "select-none pointer-events-none" : ""} 
           `}
           style={{
             fontFamily: obj.fontFamily,
@@ -111,9 +113,14 @@ export const TextItem = ({
             fontStyle: obj.isItalic ? "italic" : "normal",
             textDecoration: obj.isUnderline ? "underline" : "none",
             height: "100%",
-            pointerEvents: pointerEvents === "none" ? "none" : "auto",
+            // We set pointerEvents to none here if grouped/locked to ensure the click bubbles
+            // to the parent container (TransformWrapper or GroupItem)
+            pointerEvents: isDisabled
+              ? "none"
+              : pointerEvents === "none"
+              ? "none"
+              : "auto",
           }}
-          readOnly={tool === "hand"}
         />
       </div>
     </TransformWrapper>

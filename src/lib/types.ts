@@ -8,6 +8,7 @@ export interface BaseObject {
   width: number;
   height: number;
   rotation: number;
+  isLocked?: boolean;
 }
 
 export interface TextObject extends BaseObject {
