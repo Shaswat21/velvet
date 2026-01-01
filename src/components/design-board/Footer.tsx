@@ -1,6 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Check } from "lucide-react";
 import { ZOOM_PRESETS } from "@/lib/constants";
 
@@ -12,7 +18,7 @@ interface FooterProps {
 
 export const Footer = ({ zoom, setZoom, handleFit }: FooterProps) => {
   return (
-    <footer className="px-4 py-3 bg-white border-t flex items-center justify-end z-30 relative">
+    <footer className="px-4 py-3 bg-white border-t flex items-center justify-end z-50 relative">
       <div className="flex items-center gap-3 w-64">
         <Slider
           value={zoom}

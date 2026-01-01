@@ -21,22 +21,34 @@ export const GroupItem = ({ obj, innerRef, ...props }: GroupItemProps) => {
   const scaleX = obj.width / obj.originalWidth;
   const scaleY = obj.height / obj.originalHeight;
 
+  // This handler will be passed to children.
+  // It ensures that clicking a child acts exactly like clicking the group itself used to.
+  const handleGroupInteraction = (e: React.MouseEvent) => {
+    if (props.tool !== "select") return;
+    e.stopPropagation();
+
+    // Select the GROUP, not the child
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      props.addSelectedId(obj.id);
+    } else {
+      props.setSelectedId(obj.id);
+    }
+    // Drag the GROUP
+    props.setDragTarget({ id: obj.id });
+  };
+
   return (
     <TransformWrapper
       obj={obj}
       {...props}
       hideResizeHandles={true}
-      onMouseDown={(e) => {
-        if (props.tool !== "select") return;
-        e.stopPropagation();
-        // Check for multiple selection keys
-        if (e.shiftKey || e.ctrlKey || e.metaKey) {
-          props.addSelectedId(obj.id);
-        } else {
-          props.setSelectedId(obj.id);
-        }
-        props.setDragTarget({ id: obj.id });
-      }}
+      // CRITICAL: The group container itself ignores mouse events
+      // so clicks in empty space fall through to the canvas (deselect).
+      pointerEvents="none"
+      // We don't need onMouseDown here anymore because the wrapper is pointer-events: none,
+      // but we keep a dummy or pass the handler just in case something bubbles weirdly,
+      // though typically the child handler stops propagation.
+      onMouseDown={() => {}}
     >
       <div
         ref={innerRef}
@@ -60,7 +72,10 @@ export const GroupItem = ({ obj, innerRef, ...props }: GroupItemProps) => {
             setResizingTarget: () => {},
             setRotatingTarget: () => {},
             onUpdate: () => {},
-            pointerEvents: "none" as const,
+            // CRITICAL: Children must capture events to trigger the group selection
+            pointerEvents: "auto" as const,
+            // Pass the Group's interaction logic to the child
+            onMouseDown: handleGroupInteraction,
           };
 
           if (child.type === "text")

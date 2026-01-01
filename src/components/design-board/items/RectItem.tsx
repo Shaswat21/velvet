@@ -8,11 +8,12 @@ interface RectItemProps {
   tool: ToolType;
   setDragTarget: (target: any) => void;
   setSelectedId: (id: string | null) => void;
-  addSelectedId: (id: string) => void; // New prop
+  addSelectedId: (id: string) => void;
   setResizingTarget: (target: any) => void;
   setRotatingTarget: (e: React.MouseEvent, id: string) => void;
   innerRef?: (el: HTMLDivElement | null) => void;
   pointerEvents?: "auto" | "none";
+  onMouseDown?: (e: React.MouseEvent) => void; // ADD THIS
 }
 
 export const RectItem = ({
@@ -20,26 +21,26 @@ export const RectItem = ({
   innerRef,
   pointerEvents,
   addSelectedId,
+  onMouseDown, // Destructure
   ...props
 }: RectItemProps) => {
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (props.tool !== "select") return;
+    e.stopPropagation();
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      addSelectedId(obj.id);
+    } else {
+      props.setSelectedId(obj.id);
+    }
+    props.setDragTarget({ id: obj.id });
+  };
+
   return (
     <TransformWrapper
       obj={obj}
       pointerEvents={pointerEvents}
       {...props}
-      onMouseDown={(e) => {
-        if (props.tool !== "select") return;
-        e.stopPropagation();
-
-        // Multi-select Logic
-        if (e.shiftKey || e.ctrlKey || e.metaKey) {
-          addSelectedId(obj.id);
-        } else {
-          props.setSelectedId(obj.id);
-        }
-
-        props.setDragTarget({ id: obj.id });
-      }}
+      onMouseDown={onMouseDown || handleMouseDown}
     >
       <div
         ref={innerRef}

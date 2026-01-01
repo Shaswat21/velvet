@@ -10,11 +10,12 @@ interface TextItemProps {
   onUpdate: (id: string, updates: Partial<TextObject>) => void;
   setDragTarget: (target: any) => void;
   setSelectedId: (id: string | null) => void;
-  addSelectedId: (id: string) => void; // New prop
+  addSelectedId: (id: string) => void;
   setResizingTarget: (target: any) => void;
   setRotatingTarget: (e: React.MouseEvent, id: string) => void;
   innerRef?: (el: HTMLDivElement | null) => void;
   pointerEvents?: "auto" | "none";
+  onMouseDown?: (e: React.MouseEvent) => void;
 }
 
 export const TextItem = ({
@@ -30,16 +31,56 @@ export const TextItem = ({
   setRotatingTarget,
   innerRef,
   pointerEvents,
+  onMouseDown,
 }: TextItemProps) => {
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const zoomFactor = zoom / 100;
 
+  // AUTO-RESIZE HEIGHT LOGIC
   useLayoutEffect(() => {
     if (textAreaRef.current) {
-      textAreaRef.current.style.height = "inherit";
-      textAreaRef.current.style.height = `${textAreaRef.current.scrollHeight}px`;
+      // 1. Reset height to allow shrinking
+      textAreaRef.current.style.height = "0px";
+
+      // 2. Measure scrollHeight
+      const scrollHeight = textAreaRef.current.scrollHeight;
+
+      // 3. Set visual height
+      textAreaRef.current.style.height = `${scrollHeight}px`;
+
+      // 4. Update data model height if significantly different
+      // Convert pixel height back to canvas units (divide by zoom)
+      const calculatedHeight = scrollHeight / zoomFactor;
+
+      if (Math.abs(obj.height - calculatedHeight) > 1) {
+        onUpdate(obj.id, { height: calculatedHeight });
+      }
     }
-  }, [obj.text, obj.width, obj.fontSize, obj.fontFamily, zoom]);
+  }, [
+    obj.text,
+    obj.width,
+    obj.fontSize,
+    obj.fontFamily,
+    obj.isBold, // Don't forget bold/italic affect height
+    obj.isItalic,
+    obj.isUnderline,
+    zoom,
+  ]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (tool !== "select") return;
+    e.stopPropagation();
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      addSelectedId(obj.id);
+    } else {
+      setSelectedId(obj.id);
+    }
+    setDragTarget({
+      id: obj.id,
+      offsetX: e.nativeEvent.offsetX,
+      offsetY: e.nativeEvent.offsetY,
+    });
+  };
 
   return (
     <TransformWrapper
@@ -50,23 +91,7 @@ export const TextItem = ({
       setResizingTarget={setResizingTarget}
       setRotatingTarget={setRotatingTarget}
       pointerEvents={pointerEvents}
-      onMouseDown={(e) => {
-        if (tool !== "select") return;
-        e.stopPropagation();
-
-        // Multi-select Logic
-        if (e.shiftKey || e.ctrlKey || e.metaKey) {
-          addSelectedId(obj.id);
-        } else {
-          setSelectedId(obj.id);
-        }
-
-        setDragTarget({
-          id: obj.id,
-          offsetX: e.nativeEvent.offsetX,
-          offsetY: e.nativeEvent.offsetY,
-        });
-      }}
+      onMouseDown={onMouseDown || handleMouseDown}
     >
       <div ref={innerRef} className="w-full h-full">
         <textarea

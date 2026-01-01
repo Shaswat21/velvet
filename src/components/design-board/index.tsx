@@ -25,6 +25,7 @@ import { TextItem } from "./items/TextItem";
 import { RectItem } from "./items/RectItem";
 import { ImageItem } from "./items/ImageItem";
 import { GroupItem } from "./items/GroupItem";
+import { LayersPanel } from "./LayersPanel";
 
 interface DesignBoardProps {
   paper: PaperKey;
@@ -64,6 +65,8 @@ export default function DesignBoard({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bgColor, setBgColor] = useState("#ffffff");
   const [isClosingToolbar, setIsClosingToolbar] = useState(false);
+
+  const [isLayersOpen, setIsLayersOpen] = useState(false);
 
   // Temp visual states
   const [tempRect, setTempRect] = useState<RectObject | null>(null);
@@ -135,6 +138,16 @@ export default function DesignBoard({
       setSelectedIds([]);
       setIsClosingToolbar(false);
     }, 300);
+  };
+
+  const handleLayerSelect = (id: string, multi: boolean) => {
+    if (multi) {
+      setSelectedIds((prev) =>
+        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+      );
+    } else {
+      setSelectedIds([id]);
+    }
   };
 
   const handleStartRotation = (e: React.MouseEvent, id: string) => {
@@ -350,11 +363,11 @@ export default function DesignBoard({
       type: "text",
       x: width / 2 - 100,
       y: height / 2 - 20,
-      width: 200,
-      height: 50,
-      text: "Double click to edit",
+      width: 300,
+      height: 100,
+      text: "Click to edit",
       rotation: 0,
-      fontSize: 24,
+      fontSize: 50,
       fontFamily: "Inter",
       color: "#000000",
       isBold: false,
@@ -570,15 +583,114 @@ export default function DesignBoard({
     }
     if (resizingTarget) {
       e.preventDefault();
-      const dx = (e.pageX - resizingTarget.startX) / currentZoom;
-      const dy = (e.pageY - resizingTarget.startY) / currentZoom;
-      const updates: any = {};
-      if (resizingTarget.direction === "x") {
-        updates.width = Math.max(10, resizingTarget.startW + dx);
-      } else {
-        updates.width = Math.max(10, resizingTarget.startW + dx);
-        updates.height = Math.max(10, resizingTarget.startH + dy);
+
+      const obj = objects.find((o) => o.id === resizingTarget.id);
+      if (!obj) return;
+
+      // 1. Calculate raw mouse delta in World Space
+      const mouseX = e.pageX;
+      const mouseY = e.pageY;
+      const dxWorld = (mouseX - resizingTarget.startX) / currentZoom;
+      const dyWorld = (mouseY - resizingTarget.startY) / currentZoom;
+
+      // 2. Convert World Delta to Local Object Delta (Unrotated)
+      // We rotate the vector (dx, dy) by -rotation to align with object axes
+      const angleRad = (obj.rotation * Math.PI) / 180;
+      const cos = Math.cos(-angleRad);
+      const sin = Math.sin(-angleRad);
+
+      const dxLocal = dxWorld * cos - dyWorld * sin;
+      const dyLocal = dxWorld * sin + dyWorld * cos;
+
+      const { direction, startW, startH, startXPos, startYPos, startFontSize } =
+        resizingTarget;
+
+      let newWidth = startW;
+      let newHeight = startH;
+
+      // 3. Calculate New Dimensions (Local)
+      // We assume handle logic: dragging 'Right' ('e') adds to width, dragging 'Left' ('w') subtracts
+      if (direction.includes("e")) {
+        newWidth = Math.max(10, startW + dxLocal);
+      } else if (direction.includes("w")) {
+        newWidth = Math.max(10, startW - dxLocal);
       }
+
+      if (direction.includes("s")) {
+        newHeight = Math.max(10, startH + dyLocal);
+      } else if (direction.includes("n")) {
+        newHeight = Math.max(10, startH - dyLocal);
+      }
+
+      // --- TEXT SCALING LOGIC ---
+      let fontSizeUpdate = {};
+      if (obj.type === "text" && direction.length === 2) {
+        // Corner resize on text -> Scale Height & Font Size proportionally
+        const scale = newWidth / startW;
+        newHeight = startH * scale; // Keep aspect ratio
+        if (startFontSize) {
+          fontSizeUpdate = { fontSize: Math.max(1, startFontSize * scale) };
+        }
+      }
+
+      // 4. Calculate Position Correction (Keep Opposite Corner Fixed)
+      // When we resize, the center point shifts. We calculate that shift in local space,
+      // rotate it back to world space, and add it to the original center.
+
+      // Calculate how much the dimensions actually changed (clamped)
+      const wDiff = newWidth - startW;
+      const hDiff = newHeight - startH;
+
+      // Determine Center Shift in Local Space based on handle
+      // If we drag 'East', center moves +wDiff/2. If 'West', center moves -wDiff/2.
+      let centerXShiftLocal = 0;
+      let centerYShiftLocal = 0;
+
+      if (direction.includes("e")) centerXShiftLocal = wDiff / 2;
+      else if (direction.includes("w")) centerXShiftLocal = -wDiff / 2;
+
+      if (direction.includes("s")) centerYShiftLocal = hDiff / 2;
+      else if (direction.includes("n")) centerYShiftLocal = -hDiff / 2;
+
+      // Rotate this shift back to World Space
+      // (Using original positive rotation)
+      const cosR = Math.cos(angleRad);
+      const sinR = Math.sin(angleRad);
+
+      const centerXShiftWorld =
+        centerXShiftLocal * cosR - centerYShiftLocal * sinR;
+      const centerYShiftWorld =
+        centerXShiftLocal * sinR + centerYShiftLocal * cosR;
+
+      // 5. Calculate New Top-Left Coordinates
+      // Old Center
+      const oldCenterX = startXPos + startW / 2;
+      const oldCenterY = startYPos + startH / 2;
+
+      // New Center
+      const newCenterX = oldCenterX + centerXShiftWorld;
+      const newCenterY = oldCenterY + centerYShiftWorld;
+
+      // New Top-Left
+      const newX = newCenterX - newWidth / 2;
+      const newY = newCenterY - newHeight / 2;
+
+      // 6. Apply Updates
+      const updates: any = {
+        x: newX,
+        y: newY,
+        width: newWidth,
+        ...fontSizeUpdate,
+      };
+
+      if (obj.type !== "text") {
+        updates.height = newHeight;
+      } else {
+        // For text, we usually let it auto-calculate, but setting Y correctly above
+        // prevents the "drift". If corner resizing, we explicitly set height to maintain smooth visual.
+        if (direction.length === 2) updates.height = newHeight;
+      }
+
       updateObject(resizingTarget.id, updates);
       return;
     }
@@ -667,6 +779,8 @@ export default function DesignBoard({
           selectedIds.length === 1 &&
           objects.find((o) => o.id === selectedIds[0])?.type === "group"
         }
+        isLayersOpen={isLayersOpen}
+        setIsLayersOpen={setIsLayersOpen}
       />
 
       <Toolbar
@@ -785,22 +899,26 @@ export default function DesignBoard({
             </ContextMenuTrigger>
             <ContextMenuContent>
               {selectedIds.length > 0 && (
-                <ContextMenuItem onClick={handleDuplicate}>
-                  Duplicate
-                </ContextMenuItem>
+                <>
+                  <ContextMenuItem onClick={handleDuplicate}>
+                    Duplicate
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                </>
               )}
-              <ContextMenuSeparator />
               {selectedIds.length > 1 && (
                 <ContextMenuItem onClick={handleGroup}>Group</ContextMenuItem>
               )}
               {selectedIds.length === 1 &&
                 objects.find((o) => o.id === selectedIds[0])?.type ===
                   "group" && (
-                  <ContextMenuItem onClick={handleUngroup}>
-                    Ungroup
-                  </ContextMenuItem>
+                  <>
+                    <ContextMenuItem onClick={handleUngroup}>
+                      Ungroup
+                    </ContextMenuItem>
+                    <ContextMenuSeparator />
+                  </>
                 )}
-              <ContextMenuSeparator />
               <ContextMenuItem onClick={handleDeleteSelected}>
                 Delete
               </ContextMenuItem>
@@ -808,6 +926,15 @@ export default function DesignBoard({
           </ContextMenu>
         </div>
       </main>
+      {/* 4. Render Layers Panel */}
+      <LayersPanel
+        objects={objects}
+        setObjects={setObjects} // This enables the reordering
+        selectedIds={selectedIds}
+        onSelect={handleLayerSelect}
+        isOpen={isLayersOpen}
+        onClose={() => setIsLayersOpen(false)}
+      />
       <Footer zoom={zoom} setZoom={setZoom} handleFit={handleFit} />
     </div>
   );
