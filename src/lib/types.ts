@@ -20,6 +20,12 @@ export interface TextObject extends BaseObject {
   isBold: boolean;
   isItalic: boolean;
   isUnderline: boolean;
+  isStrikethrough: boolean;
+  textAlign: "left" | "center" | "right" | "justify";
+  backgroundColor: string;
+  textTransform: "none" | "uppercase" | "lowercase" | "capitalize";
+  letterSpacing: number;
+  lineHeight: number;
 }
 
 export interface RectObject extends BaseObject {

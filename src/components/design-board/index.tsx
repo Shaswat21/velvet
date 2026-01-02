@@ -77,7 +77,6 @@ export default function DesignBoard({
 
       {/* Render the Canvas Area with Explicit Prop Mapping */}
       <CanvasArea
-        // Pass data properties directly from the hook
         containerRef={board.containerRef}
         canvasRef={board.canvasRef}
         objRefs={board.objRefs}
@@ -91,20 +90,18 @@ export default function DesignBoard({
         height={board.height}
         tempRect={board.tempRect}
         selectionBox={board.selectionBox}
+        dragTarget={board.dragTarget}
         setDragTarget={board.setDragTarget}
         setResizingTarget={board.setResizingTarget}
         updateObject={board.updateObject}
-        // Map mismatched function names to expected Prop names
         onMouseDown={board.handleContainerMouseDown}
         setSelectedId={board.setSelectedIds}
         setRotatingTarget={board.handleStartRotation}
-        // Context Menu Actions
         onDuplicate={board.handleDuplicate}
         onGroup={board.handleGroup}
         onUngroup={board.handleUngroup}
         onDelete={board.handleDeleteSelected}
         onToggleLock={board.toggleLock}
-        // Inline Helper
         addSelectedId={(id) =>
           board.setSelectedIds((prev) =>
             prev.includes(id) ? prev : [...prev, id]

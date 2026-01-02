@@ -16,7 +16,8 @@ interface TextItemProps {
   innerRef?: (el: HTMLDivElement | null) => void;
   pointerEvents?: "auto" | "none";
   onMouseDown?: (e: React.MouseEvent) => void;
-  isGrouped?: boolean; // NEW PROP
+  isGrouped?: boolean;
+  isDragging?: boolean;
 }
 
 export const TextItem = ({
@@ -33,7 +34,8 @@ export const TextItem = ({
   innerRef,
   pointerEvents,
   onMouseDown,
-  isGrouped = false, // Default false
+  isGrouped = false,
+  isDragging = false,
 }: TextItemProps) => {
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const zoomFactor = zoom / 100;
@@ -57,6 +59,10 @@ export const TextItem = ({
     obj.isBold,
     obj.isItalic,
     obj.isUnderline,
+    obj.isStrikethrough,
+    obj.textTransform,
+    obj.letterSpacing,
+    obj.lineHeight,
     zoom,
   ]);
 
@@ -76,7 +82,15 @@ export const TextItem = ({
   };
 
   // Determine if interaction should be disabled
-  const isDisabled = tool === "hand" || obj.isLocked || isGrouped;
+  const isDisabled = tool === "hand" || obj.isLocked || isGrouped || isDragging;
+
+  const decoration =
+    [
+      obj.isUnderline ? "underline" : "",
+      obj.isStrikethrough ? "line-through" : "",
+    ]
+      .filter(Boolean)
+      .join(" ") || "none";
 
   return (
     <TransformWrapper
@@ -97,7 +111,7 @@ export const TextItem = ({
           readOnly={isDisabled}
           className={`
             w-full bg-transparent resize-none overflow-hidden leading-normal
-            focus:outline-none outline-none border-none p-1 block
+            focus:outline-none outline-none border-none p-1 block rounded-[10px]
             ${
               /* Cursor Logic: Text cursor only if selected, not locked, and not grouped */ ""
             }
@@ -111,10 +125,13 @@ export const TextItem = ({
             color: obj.color,
             fontWeight: obj.isBold ? "bold" : "normal",
             fontStyle: obj.isItalic ? "italic" : "normal",
-            textDecoration: obj.isUnderline ? "underline" : "none",
+            textDecoration: decoration,
+            textAlign: obj.textAlign,
+            backgroundColor: obj.backgroundColor,
+            textTransform: obj.textTransform,
+            letterSpacing: `${obj.letterSpacing / 1000}em`,
+            lineHeight: obj.lineHeight,
             height: "100%",
-            // We set pointerEvents to none here if grouped/locked to ensure the click bubbles
-            // to the parent container (TransformWrapper or GroupItem)
             pointerEvents: isDisabled
               ? "none"
               : pointerEvents === "none"

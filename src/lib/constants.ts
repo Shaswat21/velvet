@@ -21,7 +21,13 @@ export const PAPER_SIZES: Record<PaperKey, { w: number; h: number }> = {
 };
 
 export const ZOOM_PRESETS = [300, 200, 150, 100, 75, 50, 25, 10];
-export const FONTS = ["Inter", "Arial", "Times New Roman", "Courier New", "Georgia"];
+export const FONTS = [
+  "Inter",
+  "Arial",
+  "Times New Roman",
+  "Courier New",
+  "Georgia",
+];
 export const PRESET_COLORS = [
   "transparent",
   "#ffffff",
@@ -40,4 +46,14 @@ export const PRESET_COLORS = [
   "#800080",
   "#008080",
   "#000080",
+];
+
+export const HIGHLIGHT_COLORS = [
+  "transparent",
+  "#fef08a",
+  "#bbf7d0",
+  "#bfdbfe",
+  "#fbcfe8",
+  "#ddd6fe",
+  "#f5f5f5",
 ];

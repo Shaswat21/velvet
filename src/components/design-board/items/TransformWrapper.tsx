@@ -135,19 +135,19 @@ export const TransformWrapper = ({
 
                 {/* --- SIDES --- */}
                 {/* Top (N - Base 0°) */}
-                <div
+                {/* <div
                   className={`absolute left-1/2 -top-1.5 -translate-x-1/2 w-4 h-2 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
                     0
                   )}`}
                   onMouseDown={(e) => handleResizeStart(e, "n")}
-                />
+                /> */}
                 {/* Bottom (S - Base 180°) */}
-                <div
+                {/* <div
                   className={`absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-4 h-2 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
                     180
                   )}`}
                   onMouseDown={(e) => handleResizeStart(e, "s")}
-                />
+                /> */}
                 {/* Left (W - Base 270°) */}
                 <div
                   className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-4 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(

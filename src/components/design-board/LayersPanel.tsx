@@ -17,6 +17,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LayerItem } from "./items/LayerItem";
 import type { CanvasObject } from "@/lib/types";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 
 interface LayersPanelProps {
   objects: CanvasObject[];
@@ -58,7 +59,7 @@ export const LayersPanel = ({
   return (
     <div
       className={`
-        fixed top-16 bottom-[57px] right-0 w-64 bg-white shadow-xl border-l z-40 transform transition-transform duration-300 ease-in-out flex flex-col
+        fixed top-16 bottom-14.25 right-0 w-64 bg-white shadow-xl border-l z-40 transform transition-transform duration-300 ease-in-out flex flex-col
         ${isOpen ? "translate-x-0" : "translate-x-full"}
       `}
     >
@@ -79,6 +80,7 @@ export const LayersPanel = ({
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
+          modifiers={[restrictToVerticalAxis]}
         >
           <SortableContext
             items={reversedObjects.map((o) => o.id)}

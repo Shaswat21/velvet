@@ -14,7 +14,6 @@ import type { GuideLine } from "@/hooks/useDesignBoard";
 import { LockIcon, Unlock } from "lucide-react";
 
 interface CanvasAreaProps {
-  // UPDATED: Explicitly allow null in the RefObject types
   containerRef: React.RefObject<HTMLDivElement | null>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
 
@@ -31,6 +30,8 @@ interface CanvasAreaProps {
 
   tempRect: any;
   selectionBox: any;
+
+  dragTarget: { id: string } | null;
 
   onMouseDown: (e: React.MouseEvent) => void;
   setDragTarget: (t: any) => void;
@@ -62,6 +63,7 @@ export const CanvasArea = ({
   height,
   tempRect,
   selectionBox,
+  dragTarget,
   onMouseDown,
   setDragTarget,
   setSelectedId,
@@ -158,11 +160,13 @@ export const CanvasArea = ({
               <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
                 {objects.map((obj) => {
                   const isSelected = selectedIds.includes(obj.id);
+                  const isDraggingItem = dragTarget?.id === obj.id;
                   const commonProps = {
                     key: obj.id,
                     zoom: zoom[0],
                     isSelected,
                     tool,
+                    isDragging: isDraggingItem,
                     setDragTarget,
                     setSelectedId: handleSetSelect,
                     addSelectedId: handleAddSelect,
@@ -181,6 +185,7 @@ export const CanvasArea = ({
                         onUpdate={updateObject}
                       />
                     );
+
                   if (obj.type === "rect")
                     return <RectItem obj={obj} {...commonProps} />;
                   if (obj.type === "image")

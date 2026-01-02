@@ -287,6 +287,12 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       isBold: false,
       isItalic: false,
       isUnderline: false,
+      isStrikethrough: false,
+      textAlign: "left",
+      backgroundColor: "transparent",
+      textTransform: "none",
+      letterSpacing: 0,
+      lineHeight: 1.2,
     };
     setObjects([...objects, newText]);
     setSelectedIds([newId]);
@@ -851,6 +857,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
         : undefined,
     width,
     height,
+    dragTarget,
     handleContainerMouseDown,
     handleGlobalMouseMove,
     handleGlobalMouseUp,
