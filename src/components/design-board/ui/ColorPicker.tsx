@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { PRESET_COLORS } from "../../../lib/constants";
 
 interface ColorPickerProps {
@@ -74,16 +78,18 @@ export const ColorPicker = ({
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 border-t pt-2">
-          <span className="text-xs text-gray-500">Hex:</span>
-          <input
-            type="color"
-            value={localValue}
-            onChange={handleCustomChange}
-            className="h-8 w-full cursor-pointer"
-            disabled={value === "transparent"}
-          />
-        </div>
+        {value != 'transparent' && (
+          <div className="flex items-center gap-2 border-t pt-2">
+            <span className="text-xs text-gray-500">Hex:</span>
+            <input
+              type="color"
+              value={localValue}
+              onChange={handleCustomChange}
+              className="h-8 w-full cursor-pointer"
+              disabled={value === "transparent"}
+            />
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

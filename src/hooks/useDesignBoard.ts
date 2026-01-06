@@ -19,6 +19,18 @@ export interface GuideLine {
   isCenter: boolean;
 }
 
+// Helper to get pointer position relative to canvas
+const getRelativePos = (
+  e: MouseEvent | React.MouseEvent,
+  canvas: HTMLElement,
+  zoom: number
+) => {
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / (zoom / 100);
+  const y = (e.clientY - rect.top) / (zoom / 100);
+  return { x, y };
+};
+
 export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -65,12 +77,8 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
 
   /* --- HELPERS --- */
   const getPointerPos = (e: React.MouseEvent) => {
-    if (!containerRef.current) return { x: 0, y: 0 };
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return { x: 0, y: 0 };
-    const x = (e.clientX - rect.left) / (zoom[0] / 100);
-    const y = (e.clientY - rect.top) / (zoom[0] / 100);
-    return { x, y };
+    if (!canvasRef.current) return { x: 0, y: 0 };
+    return getRelativePos(e, canvasRef.current, zoom[0]);
   };
 
   const updateObject = (id: string, updates: Partial<CanvasObject>) => {
@@ -104,7 +112,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
 
   const handleStartRotation = (e: React.MouseEvent, id: string) => {
     const obj = objects.find((o) => o.id === id);
-    if (obj?.isLocked) return; // Prevent rotation start if locked
+    if (obj?.isLocked) return;
 
     const canvasEl = canvasRef.current;
     if (obj && canvasEl) {
@@ -151,7 +159,6 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
 
   const handleGroup = () => {
     if (selectedIds.length < 2) return;
-    // Prevent grouping if any selected item is locked
     const itemsToGroup = objects.filter((o) => selectedIds.includes(o.id));
     if (itemsToGroup.some((o) => o.isLocked)) return;
 
@@ -233,7 +240,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
   const handleUngroup = () => {
     if (selectedIds.length !== 1) return;
     const group = objects.find((o) => o.id === selectedIds[0]);
-    if (!group || group.type !== "group" || group.isLocked) return; // Prevent ungroup if locked
+    if (!group || group.type !== "group" || group.isLocked) return;
 
     const scaleX = group.width / group.originalWidth;
     const scaleY = group.height / group.originalHeight;
@@ -337,15 +344,10 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
 
   const handleDeleteSelected = () => {
     if (selectedIds.length > 0) {
-      // Don't delete locked items
       setObjects((prev) =>
         prev.filter((t) => !selectedIds.includes(t.id) || t.isLocked)
       );
-      // Only clear selection if we actually deleted something, or filter selection to remove deleted
-      // Simpler: Just allow the delete intent to fail silently for locked items
       setSelectedIds((prev) => {
-        // If all selected were locked, keep selection. If some deleted, remove them.
-        // This is a bit complex, simpler to just re-calculate selection based on remaining objects
         return prev.filter((id) => objects.find((o) => o.id === id)?.isLocked);
       });
     } else {
@@ -363,6 +365,34 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       (e.target as HTMLElement).classList.contains("paper-canvas")
     ) {
       if (tool === "select") {
+        // --- 1. DELETE ON UNFOCUS LOGIC ---
+        // If clicking the background (unfocusing), check if any currently selected items
+        // are 100% outside the page. If so, delete them.
+        if (selectedIds.length > 0) {
+          const idsToDelete: string[] = [];
+          selectedIds.forEach((id) => {
+            const obj = objects.find((o) => o.id === id);
+            if (obj && !obj.isLocked) {
+              const isOutside =
+                obj.x + obj.width < 0 || // Right edge is left of 0
+                obj.x > width || // Left edge is right of width
+                obj.y + obj.height < 0 || // Bottom edge is above 0
+                obj.y > height; // Top edge is below height
+
+              if (isOutside) {
+                idsToDelete.push(id);
+              }
+            }
+          });
+
+          if (idsToDelete.length > 0) {
+            setObjects((prev) =>
+              prev.filter((o) => !idsToDelete.includes(o.id))
+            );
+          }
+        }
+        // ---------------------------------
+
         if (!e.shiftKey && !e.ctrlKey && !e.metaKey) setSelectedIds([]);
         isSelecting.current = true;
         selectionStartPos.current = getPointerPos(e);
@@ -383,7 +413,9 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
 
   const handleGlobalMouseMove = (e: React.MouseEvent) => {
     const currentZoom = zoom[0] / 100;
-    const { x, y } = getPointerPos(e);
+    // For non-canvas events, we need manual calc
+    if (!canvasRef.current) return;
+    const { x, y } = getRelativePos(e, canvasRef.current, zoom[0]);
 
     if (!dragTarget && guides.length > 0) setGuides([]);
 
@@ -418,7 +450,6 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     }
     if (rotatingTarget) {
       e.preventDefault();
-      // Lock Check
       const obj = objects.find((o) => o.id === rotatingTarget.id);
       if (obj?.isLocked) return;
 
@@ -430,11 +461,12 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       });
       return;
     }
+
     // RESIZING
     if (resizingTarget) {
       e.preventDefault();
       const obj = objects.find((o) => o.id === resizingTarget.id);
-      if (!obj || obj.isLocked) return; // Lock Check
+      if (!obj || obj.isLocked) return;
 
       const mouseX = e.pageX;
       const mouseY = e.pageY;
@@ -500,7 +532,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     if (dragTarget) {
       e.preventDefault();
       const draggedObj = objects.find((o) => o.id === dragTarget.id);
-      if (!draggedObj || draggedObj.isLocked) return; // Lock Check
+      if (!draggedObj || draggedObj.isLocked) return;
 
       const rawDx = e.movementX / currentZoom;
       const rawDy = e.movementY / currentZoom;
@@ -705,10 +737,42 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     }
   };
 
-  const handleGlobalMouseUp = () => {
+  const handleGlobalMouseUp = (e: React.MouseEvent) => {
     setGuides([]);
+
+    // --- 2. DELETE ON DROP LOGIC ---
+    if (dragTarget) {
+      const draggedObj = objects.find((o) => o.id === dragTarget.id);
+
+      // Check if the ITEM itself is 100% outside the paper boundaries
+      if (draggedObj) {
+        const objLeft = draggedObj.x;
+        const objRight = draggedObj.x + draggedObj.width;
+        const objTop = draggedObj.y;
+        const objBottom = draggedObj.y + draggedObj.height;
+
+        const isOutside =
+          objRight < 0 || // Entirely Left
+          objLeft > width || // Entirely Right
+          objBottom < 0 || // Entirely Above
+          objTop > height; // Entirely Below
+
+        if (isOutside) {
+          // Delete Object
+          setObjects((prev) => prev.filter((o) => o.id !== dragTarget.id));
+          // Remove Selection
+          setSelectedIds((prev) => prev.filter((id) => id !== dragTarget.id));
+
+          // Cleanup and Return
+          setDragTarget(null);
+          isDragging.current = false;
+          return;
+        }
+      }
+    }
+    // -------------------------------
+
     if (isSelecting.current && selectionBox) {
-      // Lock Check: Exclude locked items from box selection
       const selected = objects
         .filter(
           (obj) =>
@@ -744,7 +808,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       containerRef.current.style.cursor = tool === "hand" ? "grab" : "";
   };
 
-  // ... (Effects remain mostly same)
+  // --- Effects ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "g") {
@@ -767,22 +831,49 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedIds, objects]);
 
-  // ... (Other effects same as before)
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
-    const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        e.stopPropagation();
-        setZoom((prev) => [
-          Math.min(Math.max(prev[0] + -e.deltaY * 0.5, 10), 300),
-        ]);
-      }
-    };
-    container.addEventListener("wheel", handleWheel, { passive: false });
-    return () => container.removeEventListener("wheel", handleWheel);
+    if (container) {
+      const handleWheel = (e: WheelEvent) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          setZoom((prev) => [
+            Math.min(Math.max(prev[0] + -e.deltaY * 0.5, 10), 300),
+          ]);
+        }
+      };
+      container.addEventListener("wheel", handleWheel, { passive: false });
+      return () => container.removeEventListener("wheel", handleWheel);
+    }
   }, []);
+
+  useEffect(() => {
+    // Wrapper to pass mouse event correctly
+    const handleMouseMoveWrapper = (e: Event) =>
+      handleGlobalMouseMove(e as unknown as React.MouseEvent);
+    const handleMouseUpWrapper = (e: Event) =>
+      handleGlobalMouseUp(e as unknown as React.MouseEvent);
+
+    window.addEventListener("mousemove", handleMouseMoveWrapper);
+    window.addEventListener("mouseup", handleMouseUpWrapper);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMoveWrapper);
+      window.removeEventListener("mouseup", handleMouseUpWrapper);
+    };
+  }, [
+    dragTarget,
+    resizingTarget,
+    rotatingTarget,
+    selectionBox,
+    objects,
+    selectedIds,
+    tool,
+    width,
+    height,
+    zoom,
+  ]);
 
   useEffect(() => {
     if (containerRef.current) containerRef.current.style.cursor = "";
@@ -873,6 +964,6 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     handleFit,
     setDragTarget,
     setResizingTarget,
-    toggleLock, // EXPORTED
+    toggleLock,
   };
 };
