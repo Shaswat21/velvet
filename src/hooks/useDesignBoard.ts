@@ -1,4 +1,10 @@
-import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+} from "react";
 import { PAPER_SIZES } from "@/lib/constants";
 import type { Orientation, PaperKey } from "@/pages/Home";
 import type {
@@ -8,7 +14,7 @@ import type {
   RectObject,
   ImageObject,
   GroupObject,
-  PathObject, // Added PathObject
+  PathObject,
 } from "@/lib/types";
 import { getRotatedBoundingBox, rotatePoint } from "@/lib/utils";
 
@@ -20,7 +26,6 @@ export interface GuideLine {
   isCenter: boolean;
 }
 
-// Helper to get pointer position relative to canvas
 const getRelativePos = (
   e: MouseEvent | React.MouseEvent,
   canvas: HTMLElement,
@@ -50,6 +55,13 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
   const drawingStartPos = useRef<{ x: number; y: number } | null>(null);
   const selectionStartPos = useRef<{ x: number; y: number } | null>(null);
 
+  // --- HISTORY STATE ---
+  const [history, setHistory] = useState<CanvasObject[][]>([[]]);
+  const [historyStep, setHistoryStep] = useState(0);
+
+  // Ref to store state before an interaction starts
+  const objectsSnapshot = useRef<string>("[]");
+
   // --- STATE ---
   const [zoom, setZoom] = useState<number[]>([40]);
   const [tool, setTool] = useState<ToolType>("select");
@@ -72,7 +84,6 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     h: number;
   } | null>(null);
 
-  // --- PATH DRAWING STATE ---
   const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>(
     []
   );
@@ -81,18 +92,56 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
   const width = orientation === "portrait" ? w : h;
   const height = orientation === "portrait" ? h : w;
 
+  /* --- HISTORY HELPERS --- */
+  const saveHistory = (newObjects: CanvasObject[]) => {
+    const currentHistoryStr = JSON.stringify(history[historyStep]);
+    const newObjectsStr = JSON.stringify(newObjects);
+    if (currentHistoryStr === newObjectsStr) return;
+
+    const newHistory = history.slice(0, historyStep + 1);
+    newHistory.push(newObjects);
+    if (newHistory.length > 50) newHistory.shift();
+
+    setHistory(newHistory);
+    setHistoryStep(newHistory.length - 1);
+  };
+
+  const undo = useCallback(() => {
+    if (historyStep > 0) {
+      const prevStep = historyStep - 1;
+      setObjects(history[prevStep]);
+      setHistoryStep(prevStep);
+      setSelectedIds([]);
+    }
+  }, [history, historyStep]);
+
+  const redo = useCallback(() => {
+    if (historyStep < history.length - 1) {
+      const nextStep = historyStep + 1;
+      setObjects(history[nextStep]);
+      setHistoryStep(nextStep);
+      setSelectedIds([]);
+    }
+  }, [history, historyStep]);
+
   /* --- HELPERS --- */
   const getPointerPos = (e: React.MouseEvent) => {
     if (!canvasRef.current) return { x: 0, y: 0 };
     return getRelativePos(e, canvasRef.current, zoom[0]);
   };
 
-  const updateObject = (id: string, updates: Partial<CanvasObject>) => {
-    setObjects((prev) =>
-      prev.map(
-        (obj) => (obj.id === id ? { ...obj, ...updates } : obj) as CanvasObject
-      )
+  const updateObject = (
+    id: string,
+    updates: Partial<CanvasObject>,
+    saveToHistory: boolean = false
+  ) => {
+    const newObjects = objects.map(
+      (obj) => (obj.id === id ? { ...obj, ...updates } : obj) as CanvasObject
     );
+    setObjects(newObjects);
+    if (saveToHistory) {
+      saveHistory(newObjects);
+    }
   };
 
   const cloneCanvasObject = (obj: CanvasObject): CanvasObject => {
@@ -119,7 +168,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
   const handleStartRotation = (e: React.MouseEvent, id: string) => {
     const obj = objects.find((o) => o.id === id);
     if (obj?.isLocked) return;
-
+    objectsSnapshot.current = JSON.stringify(objects);
     const canvasEl = canvasRef.current;
     if (obj && canvasEl) {
       const canvasRect = canvasEl.getBoundingClientRect();
@@ -138,16 +187,16 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
   };
 
   const toggleLock = (id: string) => {
-    setObjects((prev) =>
-      prev.map((obj) =>
-        obj.id === id ? { ...obj, isLocked: !obj.isLocked } : obj
-      )
+    const newObjects = objects.map((obj) =>
+      obj.id === id ? { ...obj, isLocked: !obj.isLocked } : obj
     );
+    setObjects(newObjects);
+    saveHistory(newObjects);
   };
 
   const handleDuplicate = () => {
     if (selectedIds.length === 0) return;
-    const newObjects: CanvasObject[] = [];
+    const newItems: CanvasObject[] = [];
     const newSelectedIds: string[] = [];
     selectedIds.forEach((id) => {
       const original = objects.find((o) => o.id === id);
@@ -155,19 +204,20 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
         const cloned = cloneCanvasObject(original);
         cloned.x += 20;
         cloned.y += 20;
-        newObjects.push(cloned);
+        newItems.push(cloned);
         newSelectedIds.push(cloned.id);
       }
     });
-    setObjects((prev) => [...prev, ...newObjects]);
+    const finalObjects = [...objects, ...newItems];
+    setObjects(finalObjects);
     setSelectedIds(newSelectedIds);
+    saveHistory(finalObjects);
   };
 
   const handleGroup = () => {
     if (selectedIds.length < 2) return;
     const itemsToGroup = objects.filter((o) => selectedIds.includes(o.id));
     if (itemsToGroup.some((o) => o.isLocked)) return;
-
     if (itemsToGroup.length === 0) return;
 
     const flattenItem = (item: CanvasObject): CanvasObject[] => {
@@ -239,8 +289,10 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       objects: groupedChildren,
     };
     const remainingObjects = objects.filter((o) => !selectedIds.includes(o.id));
-    setObjects([...remainingObjects, groupObj]);
+    const finalObjects = [...remainingObjects, groupObj];
+    setObjects(finalObjects);
     setSelectedIds([newGroupId]);
+    saveHistory(finalObjects);
   };
 
   const handleUngroup = () => {
@@ -279,8 +331,10 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       } as CanvasObject;
     });
     const remaining = objects.filter((o) => o.id !== group.id);
-    setObjects([...remaining, ...restoredChildren]);
+    const finalObjects = [...remaining, ...restoredChildren];
+    setObjects(finalObjects);
     setSelectedIds(restoredChildren.map((c: any) => c.id));
+    saveHistory(finalObjects);
   };
 
   const handleAddText = () => {
@@ -307,9 +361,11 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       letterSpacing: 0,
       lineHeight: 1.2,
     };
-    setObjects([...objects, newText]);
+    const finalObjects = [...objects, newText];
+    setObjects(finalObjects);
     setSelectedIds([newId]);
     setTool("select");
+    saveHistory(finalObjects);
   };
 
   const handleAddImage = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -339,9 +395,11 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
           strokeColor: "transparent",
           strokeWidth: 0,
         };
-        setObjects((prev) => [...prev, newImg]);
+        const finalObjects = [...objects, newImg];
+        setObjects(finalObjects);
         setSelectedIds([newId]);
         setTool("select");
+        saveHistory(finalObjects);
       };
     };
     reader.readAsDataURL(file);
@@ -350,15 +408,18 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
 
   const handleDeleteSelected = () => {
     if (selectedIds.length > 0) {
-      setObjects((prev) =>
-        prev.filter((t) => !selectedIds.includes(t.id) || t.isLocked)
+      const finalObjects = objects.filter(
+        (t) => !selectedIds.includes(t.id) || t.isLocked
       );
-      setSelectedIds((prev) => {
-        return prev.filter((id) => objects.find((o) => o.id === id)?.isLocked);
-      });
+      setObjects(finalObjects);
+      setSelectedIds((prev) =>
+        prev.filter((id) => objects.find((o) => o.id === id)?.isLocked)
+      );
+      saveHistory(finalObjects);
     } else {
       setObjects([]);
       setBgColor("#ffffff");
+      saveHistory([]);
     }
   };
 
@@ -374,11 +435,11 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
         if (!e.shiftKey && !e.ctrlKey && !e.metaKey) setSelectedIds([]);
         isSelecting.current = true;
         selectionStartPos.current = getPointerPos(e);
+        objectsSnapshot.current = JSON.stringify(objects);
       } else if (tool === "rect") {
         isDrawing.current = true;
         drawingStartPos.current = getPointerPos(e);
       } else if (tool === "pen") {
-        // --- START PEN DRAWING ---
         isDrawing.current = true;
         const pos = getPointerPos(e);
         setCurrentPath([pos]);
@@ -401,7 +462,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
 
     if (!dragTarget && guides.length > 0) setGuides([]);
 
-    // Selecting Box
+    // Selecting
     if (isSelecting.current && selectionStartPos.current) {
       const sx = selectionStartPos.current.x;
       const sy = selectionStartPos.current.y;
@@ -413,8 +474,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       });
       return;
     }
-
-    // Rect Drawing
+    // Rect Draw
     if (isDrawing.current && tool === "rect" && drawingStartPos.current) {
       const sx = drawingStartPos.current.x;
       const sy = drawingStartPos.current.y;
@@ -433,19 +493,16 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       });
       return;
     }
-
-    // --- PEN DRAWING ---
+    // Pen Draw
     if (isDrawing.current && tool === "pen") {
       setCurrentPath((prev) => [...prev, { x, y }]);
       return;
     }
-
-    // ROTATING
+    // Rotate
     if (rotatingTarget) {
       e.preventDefault();
       const obj = objects.find((o) => o.id === rotatingTarget.id);
       if (obj?.isLocked) return;
-
       const { cx, cy, startAngle, initialRotation } = rotatingTarget;
       const currentAngle = Math.atan2(e.clientY - cy, e.clientX - cx);
       const angleDiff = (currentAngle - startAngle) * (180 / Math.PI);
@@ -454,8 +511,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       });
       return;
     }
-
-    // RESIZING
+    // Resize
     if (resizingTarget) {
       e.preventDefault();
       const obj = objects.find((o) => o.id === resizingTarget.id);
@@ -523,7 +579,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       return;
     }
 
-    // DRAGGING
+    // --- DRAG WITH ALIGNMENT GUIDES ---
     if (dragTarget) {
       e.preventDefault();
       const draggedObj = objects.find((o) => o.id === dragTarget.id);
@@ -534,14 +590,155 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
 
       const newX = draggedObj.x + rawDx;
       const newY = draggedObj.y + rawDy;
-      // const w = draggedObj.width;
-      // const h = draggedObj.height;
+      const wObj = draggedObj.width;
+      const hObj = draggedObj.height;
 
-      // ... Guide snapping logic omitted for brevity (but you can keep it)
-      updateObject(dragTarget.id, { x: newX, y: newY });
+      const dEdges = {
+        left: newX,
+        midX: newX + wObj / 2,
+        right: newX + wObj,
+        top: newY,
+        midY: newY + hObj / 2,
+        bottom: newY + hObj,
+      };
+
+      const SNAP_THRESHOLD = 5;
+      const activeGuides: GuideLine[] = [];
+
+      let minSnapDistX = SNAP_THRESHOLD;
+      let minSnapDistY = SNAP_THRESHOLD;
+      let snapDx = 0;
+      let snapDy = 0;
+
+      // Helper to check alignment distance
+      const checkAlign = (
+        val1: number,
+        val2: number,
+        _isCenter: boolean,
+        guideType: "vertical" | "horizontal"
+      ) => {
+        const dist = Math.abs(val1 - val2);
+        const minSnap = guideType === "vertical" ? minSnapDistX : minSnapDistY;
+
+        if (dist < minSnap) {
+          if (guideType === "vertical") {
+            minSnapDistX = dist;
+            snapDx = val2 - val1;
+          } else {
+            minSnapDistY = dist;
+            snapDy = val2 - val1;
+          }
+          return true;
+        } else if (dist === minSnap && dist < SNAP_THRESHOLD) {
+          return true;
+        }
+        return false;
+      };
+
+      // 1. Center of Canvas Guides
+      const canvasMidX = width / 2;
+      const canvasMidY = height / 2;
+
+      if (checkAlign(dEdges.midX, canvasMidX, true, "vertical")) {
+        activeGuides.push({
+          type: "vertical",
+          x: canvasMidX,
+          y: 0,
+          length: height,
+          isCenter: true,
+        });
+      }
+      if (checkAlign(dEdges.midY, canvasMidY, true, "horizontal")) {
+        activeGuides.push({
+          type: "horizontal",
+          x: 0,
+          y: canvasMidY,
+          length: width,
+          isCenter: true,
+        });
+      }
+
+      // 2. Object-to-Object Alignment
+      objects.forEach((other) => {
+        if (selectedIds.includes(other.id)) return; // Don't snap to self
+
+        const oEdges = {
+          left: other.x,
+          midX: other.x + other.width / 2,
+          right: other.x + other.width,
+          top: other.y,
+          midY: other.y + other.height / 2,
+          bottom: other.y + other.height,
+        };
+
+        // Vertical Comparisons (X-axis alignment)
+        const xComparisons = [
+          { dVal: dEdges.left, oVal: oEdges.left, isCenter: false },
+          { dVal: dEdges.left, oVal: oEdges.right, isCenter: false },
+          { dVal: dEdges.midX, oVal: oEdges.midX, isCenter: true },
+          { dVal: dEdges.right, oVal: oEdges.left, isCenter: false },
+          { dVal: dEdges.right, oVal: oEdges.right, isCenter: false },
+        ];
+
+        xComparisons.forEach((comp) => {
+          if (checkAlign(comp.dVal, comp.oVal, comp.isCenter, "vertical")) {
+            const startYGuide = Math.min(dEdges.top, oEdges.top);
+            const endYGuide = Math.max(dEdges.bottom, oEdges.bottom);
+            activeGuides.push({
+              type: "vertical",
+              x: comp.oVal,
+              y: startYGuide,
+              length: endYGuide - startYGuide,
+              isCenter: comp.isCenter,
+            });
+          }
+        });
+
+        // Horizontal Comparisons (Y-axis alignment)
+        const yComparisons = [
+          { dVal: dEdges.top, oVal: oEdges.top, isCenter: false },
+          { dVal: dEdges.top, oVal: oEdges.bottom, isCenter: false },
+          { dVal: dEdges.midY, oVal: oEdges.midY, isCenter: true },
+          { dVal: dEdges.bottom, oVal: oEdges.top, isCenter: false },
+          { dVal: dEdges.bottom, oVal: oEdges.bottom, isCenter: false },
+        ];
+
+        yComparisons.forEach((comp) => {
+          if (checkAlign(comp.dVal, comp.oVal, comp.isCenter, "horizontal")) {
+            const startXGuide = Math.min(dEdges.left, oEdges.left);
+            const endXGuide = Math.max(dEdges.right, oEdges.right);
+            activeGuides.push({
+              type: "horizontal",
+              x: startXGuide,
+              y: comp.oVal,
+              length: endXGuide - startXGuide,
+              isCenter: comp.isCenter,
+            });
+          }
+        });
+      });
+
+      // Filter only the best snaps
+      const bestGuides = activeGuides.filter((g) => {
+        // Keep all that match the snap distance (since we update snapDx/Dy in real time)
+        return true;
+      });
+
+      setGuides(bestGuides);
+
+      // Apply snap
+      const finalDx = rawDx + snapDx;
+      const finalDy = rawDy + snapDy;
+
+      // Update positions
+      selectedIds.forEach((id) => {
+        const obj = objects.find((o) => o.id === id);
+        if (obj) updateObject(id, { x: obj.x + finalDx, y: obj.y + finalDy });
+      });
       return;
     }
 
+    // Pan
     if (isDragging.current && containerRef.current) {
       e.preventDefault();
       containerRef.current.scrollLeft =
@@ -554,6 +751,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
   const handleGlobalMouseUp = (e: React.MouseEvent) => {
     setGuides([]);
 
+    // 1. Drop/Delete Logic
     if (dragTarget) {
       const draggedObj = objects.find((o) => o.id === dragTarget.id);
       if (draggedObj) {
@@ -565,12 +763,24 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
           objBottom < 0 ||
           draggedObj.y > height;
         if (isOutside) {
-          setObjects((prev) => prev.filter((o) => o.id !== dragTarget.id));
+          const finalObjects = objects.filter((o) => o.id !== dragTarget.id);
+          setObjects(finalObjects);
           setSelectedIds((prev) => prev.filter((id) => id !== dragTarget.id));
+          saveHistory(finalObjects);
           setDragTarget(null);
           isDragging.current = false;
           return;
         }
+      }
+
+      if (objectsSnapshot.current !== JSON.stringify(objects)) {
+        saveHistory(objects);
+      }
+    }
+
+    if (resizingTarget || rotatingTarget) {
+      if (objectsSnapshot.current !== JSON.stringify(objects)) {
+        saveHistory(objects);
       }
     }
 
@@ -589,38 +799,33 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       setSelectionBox(null);
     }
 
-    // Rect Finish
     if (isDrawing.current && tool === "rect" && tempRect) {
       const newObj: RectObject = {
         ...tempRect,
         id: Math.random().toString(36).substr(2, 9),
       };
-      setObjects([...objects, newObj]);
+      const finalObjects = [...objects, newObj];
+      setObjects(finalObjects);
       setSelectedIds([newObj.id]);
       setTempRect(null);
       setTool("select");
+      saveHistory(finalObjects);
     }
 
-    // --- PEN FINISH: CREATE PATH OBJECT ---
     if (isDrawing.current && tool === "pen" && currentPath.length > 1) {
-      // 1. Calculate Bounding Box
       const xs = currentPath.map((p) => p.x);
       const ys = currentPath.map((p) => p.y);
       const minX = Math.min(...xs);
       const minY = Math.min(...ys);
       const maxX = Math.max(...xs);
       const maxY = Math.max(...ys);
-
       const width = Math.max(maxX - minX, 1);
       const height = Math.max(maxY - minY, 1);
-
-      // 2. Normalize Points
       const relativePoints = currentPath.map((p) => ({
         x: p.x - minX,
         y: p.y - minY,
       }));
 
-      // 3. Create Path Object
       const newPath: PathObject = {
         id: Math.random().toString(36).substr(2, 9),
         type: "path",
@@ -629,16 +834,17 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
         width,
         height,
         rotation: 0,
-        points: relativePoints, // Use normalized points
+        points: relativePoints,
         strokeColor: "#000000",
         strokeWidth: 3,
         opacity: 1,
       };
 
-      setObjects((prev) => [...prev, newPath]);
+      const finalObjects = [...objects, newPath];
+      setObjects(finalObjects);
       setSelectedIds([newPath.id]);
       setCurrentPath([]);
-      // setTool("select"); // Optional
+      saveHistory(finalObjects);
     } else {
       setCurrentPath([]);
     }
@@ -658,6 +864,23 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
   // --- Effects ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === "z" &&
+        !e.shiftKey
+      ) {
+        e.preventDefault();
+        undo();
+        return;
+      }
+      if (
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") ||
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && e.shiftKey)
+      ) {
+        e.preventDefault();
+        redo();
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "g") {
         e.preventDefault();
         e.shiftKey ? handleUngroup() : handleGroup();
@@ -676,7 +899,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedIds, objects]);
+  }, [selectedIds, objects, undo, redo, history, historyStep]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -772,6 +995,15 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     }
   };
 
+  const setDragTargetWithSnapshot = (t: any) => {
+    objectsSnapshot.current = JSON.stringify(objects);
+    setDragTarget(t);
+  };
+  const setResizingTargetWithSnapshot = (t: any) => {
+    objectsSnapshot.current = JSON.stringify(objects);
+    setResizingTarget(t);
+  };
+
   return {
     canvasRef,
     containerRef,
@@ -809,10 +1041,14 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     updateObject,
     handleLayerSelect,
     handleFit,
-    setDragTarget,
-    setResizingTarget,
+    setDragTarget: setDragTargetWithSnapshot,
+    setResizingTarget: setResizingTargetWithSnapshot,
     toggleLock,
     isDrawing: isDrawing.current,
     currentPath,
+    undo,
+    redo,
+    canUndo: historyStep > 0,
+    canRedo: historyStep < history.length - 1,
   };
 };

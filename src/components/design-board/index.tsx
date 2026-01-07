@@ -67,9 +67,10 @@ export default function DesignBoard({
 
       <Toolbar
         selectedObject={board.singleSelectedObject}
+        // UPDATE: Pass 'true' to save property changes to history stack
         updateSelected={(updates) =>
           board.selectedIds.length === 1 &&
-          board.updateObject(board.selectedIds[0], updates)
+          board.updateObject(board.selectedIds[0], updates, true)
         }
         handleCloseToolbar={handleCloseToolbar}
         isClosingToolbar={isClosingToolbar}
@@ -107,7 +108,7 @@ export default function DesignBoard({
             prev.includes(id) ? prev : [...prev, id]
           )
         }
-        // --- NEW: Pass Drawing State ---
+        // Drawing State
         isDrawing={board.isDrawing}
         currentPath={board.currentPath}
       />

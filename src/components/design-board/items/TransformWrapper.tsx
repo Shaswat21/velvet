@@ -28,11 +28,15 @@ export const TransformWrapper = ({
 }: TransformWrapperProps) => {
   const zoomFactor = zoom / 100;
 
+  // 1. Disable interaction if not in select mode
   const effectivePointerEvents = pointerEvents
     ? pointerEvents
-    : tool === "hand" || tool === "rect"
-    ? "none"
-    : "auto";
+    : tool === "select"
+    ? "auto"
+    : "none";
+
+  // 2. Only show selection UI (blue box) if in select mode
+  const shouldShowHandles = isSelected && tool === "select";
 
   const getStartFontSize = () =>
     obj.type === "text" ? (obj as any).fontSize : undefined;
@@ -52,14 +56,9 @@ export const TransformWrapper = ({
     });
   };
 
-  // Helper: Calculate visual cursor direction based on object rotation
   const getCursor = (handleAngle: number) => {
-    // 1. Add object rotation to the handle's base angle
     const totalAngle = (handleAngle + obj.rotation) % 360;
-    // 2. Normalize to 0-360 positive range
     const normalized = totalAngle < 0 ? totalAngle + 360 : totalAngle;
-
-    // 3. Map result to standard CSS cursors (using 45 degree segments)
     if (normalized >= 337.5 || normalized < 22.5) return "cursor-n-resize";
     if (normalized >= 22.5 && normalized < 67.5) return "cursor-ne-resize";
     if (normalized >= 67.5 && normalized < 112.5) return "cursor-e-resize";
@@ -68,8 +67,7 @@ export const TransformWrapper = ({
     if (normalized >= 202.5 && normalized < 247.5) return "cursor-sw-resize";
     if (normalized >= 247.5 && normalized < 292.5) return "cursor-w-resize";
     if (normalized >= 292.5 && normalized < 337.5) return "cursor-nw-resize";
-
-    return "cursor-move"; // Fallback
+    return "cursor-move";
   };
 
   return (
@@ -84,17 +82,18 @@ export const TransformWrapper = ({
         transform: `rotate(${obj.rotation}deg)`,
         transformOrigin: "center center",
         pointerEvents: effectivePointerEvents,
-        cursor: obj.isLocked
-          ? "default"
-          : pointerEvents === "none"
-          ? "default"
-          : "move",
+        cursor:
+          tool !== "select"
+            ? "crosshair" // Force crosshair when drawing over items
+            : obj.isLocked
+            ? "default"
+            : "move",
       }}
       className="group"
     >
       {children}
 
-      {isSelected && (
+      {shouldShowHandles && (
         <div className="absolute -inset-1 border-2 border-blue-500 pointer-events-none">
           {obj.isLocked ? (
             <div className="absolute -top-3 -left-3 bg-gray-100 border border-gray-400 p-1 rounded-sm shadow-sm pointer-events-auto z-50">
@@ -103,59 +102,38 @@ export const TransformWrapper = ({
           ) : (
             !hideResizeHandles && (
               <>
-                {/* --- CORNERS --- */}
-                {/* Top Left (NW - Base 315°) */}
+                {/* CORNERS */}
                 <div
                   className={`absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
                     315
                   )}`}
                   onMouseDown={(e) => handleResizeStart(e, "nw")}
                 />
-                {/* Top Right (NE - Base 45°) */}
                 <div
                   className={`absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
                     45
                   )}`}
                   onMouseDown={(e) => handleResizeStart(e, "ne")}
                 />
-                {/* Bottom Left (SW - Base 225°) */}
                 <div
                   className={`absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
                     225
                   )}`}
                   onMouseDown={(e) => handleResizeStart(e, "sw")}
                 />
-                {/* Bottom Right (SE - Base 135°) */}
                 <div
                   className={`absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
                     135
                   )}`}
                   onMouseDown={(e) => handleResizeStart(e, "se")}
                 />
-
-                {/* --- SIDES --- */}
-                {/* Top (N - Base 0°) */}
-                {/* <div
-                  className={`absolute left-1/2 -top-1.5 -translate-x-1/2 w-4 h-2 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
-                    0
-                  )}`}
-                  onMouseDown={(e) => handleResizeStart(e, "n")}
-                /> */}
-                {/* Bottom (S - Base 180°) */}
-                {/* <div
-                  className={`absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-4 h-2 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
-                    180
-                  )}`}
-                  onMouseDown={(e) => handleResizeStart(e, "s")}
-                /> */}
-                {/* Left (W - Base 270°) */}
+                {/* SIDES */}
                 <div
                   className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-4 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
                     270
                   )}`}
                   onMouseDown={(e) => handleResizeStart(e, "w")}
                 />
-                {/* Right (E - Base 90°) */}
                 <div
                   className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-4 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
                     90
@@ -166,7 +144,7 @@ export const TransformWrapper = ({
             )
           )}
 
-          {/* Move Handle (Top Left External) */}
+          {/* Move Handle */}
           <div className="absolute -top-5 -left-5 bg-white border border-blue-500 p-0.5 rounded-sm shadow-sm pointer-events-none scale-75">
             <Move className="w-3 h-3 text-blue-500" />
           </div>

@@ -82,7 +82,7 @@ export const TextItem = ({
   };
 
   // Determine if interaction should be disabled
-  const isDisabled = tool === "hand" || obj.isLocked || isGrouped || isDragging;
+  const isDisabled = tool === "hand" || obj.isLocked || isGrouped || isDragging || tool === "rect" || tool === "pen";
 
   const decoration =
     [
