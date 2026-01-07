@@ -107,6 +107,9 @@ export default function DesignBoard({
             prev.includes(id) ? prev : [...prev, id]
           )
         }
+        // --- NEW: Pass Drawing State ---
+        isDrawing={board.isDrawing}
+        currentPath={board.currentPath}
       />
 
       <LayersPanel
@@ -116,7 +119,6 @@ export default function DesignBoard({
         onSelect={board.handleLayerSelect}
         isOpen={isLayersOpen}
         onClose={() => setIsLayersOpen(false)}
-        // onToggleLock={board.toggleLock}
       />
 
       <Footer

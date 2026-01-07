@@ -9,6 +9,7 @@ import {
   Image as ImageIcon,
   Trash2,
   Square,
+  PenTool, // Import the Pen icon
   Group,
   Ungroup,
   Layers,
@@ -33,7 +34,7 @@ interface HeaderProps {
   handleUngroup?: () => void;
   selectedCount?: number;
   isGroupSelected?: boolean;
-  isLayersOpen: boolean; // Add this
+  isLayersOpen: boolean;
   setIsLayersOpen: (v: boolean) => void;
 }
 
@@ -73,15 +74,24 @@ export const Header = ({
         </Button>
         <span className="h-6 w-px bg-gray-200"></span>
         <Tabs value={tool} onValueChange={(v) => setTool(v as ToolType)}>
-          <TabsList className="grid w-36 grid-cols-3 h-9">
-            <TabsTrigger value="select" className="h-7 p-0">
+          {/* Updated grid to 4 columns for the new tool */}
+          <TabsList className="grid w-48 grid-cols-4 h-9">
+            <TabsTrigger value="select" className="h-7 p-0" title="Select">
               <MousePointer2 className="h-4 w-4" />
             </TabsTrigger>
-            <TabsTrigger value="hand" className="h-7 p-0">
+            <TabsTrigger value="hand" className="h-7 p-0" title="Pan Tool">
               <Hand className="h-4 w-4" />
             </TabsTrigger>
-            <TabsTrigger value="draw-rect" className="h-7 p-0">
+            <TabsTrigger
+              value="rect"
+              className="h-7 p-0"
+              title="Rectangle"
+            >
               <Square className="h-4 w-4" />
+            </TabsTrigger>
+            {/* Added Pen Tool Trigger */}
+            <TabsTrigger value="pen" className="h-7 p-0" title="Pen">
+              <PenTool className="h-4 w-4" />
             </TabsTrigger>
           </TabsList>
         </Tabs>

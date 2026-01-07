@@ -30,7 +30,7 @@ export const TransformWrapper = ({
 
   const effectivePointerEvents = pointerEvents
     ? pointerEvents
-    : tool === "hand" || tool === "draw-rect"
+    : tool === "hand" || tool === "rect"
     ? "none"
     : "auto";
 

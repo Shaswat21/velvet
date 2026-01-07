@@ -1,8 +1,8 @@
-export type ToolType = "select" | "hand" | "draw-rect";
+export type ToolType = "select" | "hand" | "rect" | "pen";
 
 export interface BaseObject {
   id: string;
-  type: "text" | "rect" | "image" | "group";
+  type: "text" | "rect" | "image" | "group" | "path";
   x: number;
   y: number;
   width: number;
@@ -52,4 +52,12 @@ export interface GroupObject extends BaseObject {
   originalHeight: number;
 }
 
-export type CanvasObject = TextObject | RectObject | ImageObject | GroupObject;
+export interface PathObject extends BaseObject {
+  type: "path";
+  points: { x: number; y: number }[];
+  strokeColor: string;
+  strokeWidth: number;
+  opacity: number;
+}
+
+export type CanvasObject = TextObject | RectObject | ImageObject | GroupObject | PathObject;
