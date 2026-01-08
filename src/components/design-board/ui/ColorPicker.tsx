@@ -5,7 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { PRESET_COLORS } from "../../../lib/constants";
+import { PRESET_COLORS } from "@/lib/constants";
 
 interface ColorPickerProps {
   value: string;

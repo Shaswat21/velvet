@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { Home, LogIn, UserPlus, Menu } from "lucide-react";
-import { cn } from "@/lib/utils/utils";
+import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { useState } from "react";
 

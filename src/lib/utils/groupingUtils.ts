@@ -1,5 +1,5 @@
 import type { CanvasObject, GroupObject } from "@/lib/types";
-import { getRotatedBoundingBox, rotatePoint } from "@/lib/utils/utils";
+import { getRotatedBoundingBox, rotatePoint } from "@/lib/utils";
 
 // Helper to flatten items (handle nested groups)
 const flattenItem = (item: CanvasObject): CanvasObject[] => {

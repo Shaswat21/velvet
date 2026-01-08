@@ -12,8 +12,8 @@ import { ImageItem } from "./items/ImageItem";
 import { GroupItem } from "./items/GroupItem";
 import { PathItem } from "./items/PathItem";
 import type { CanvasObject, ToolType } from "@/lib/types";
-import type { GuideLine } from "@/hooks/useDesignBoard";
 import { LockIcon, Unlock } from "lucide-react";
+import type { GuideLine } from "@/lib/utils/snappingUtils";
 
 interface CanvasAreaProps {
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -86,7 +86,8 @@ export const CanvasArea = ({
 
   useEffect(() => {
     const canvas = ghostCanvasRef.current;
-    if (!canvas || !isDrawing || currentPath.length < 2 || tool !== "pen") return;
+    if (!canvas || !isDrawing || currentPath.length < 2 || tool !== "pen")
+      return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -159,10 +160,26 @@ export const CanvasArea = ({
                   style={{
                     left: `${g.x * zoomScale}px`,
                     top: `${g.y * zoomScale}px`,
-                    width: g.type === "vertical" ? "1px" : `${g.length * zoomScale}px`,
-                    height: g.type === "horizontal" ? "1px" : `${g.length * zoomScale}px`,
-                    borderLeft: g.type === "vertical" ? (g.isCenter ? "1px solid #ef4444" : "1px dashed #ef4444") : "none",
-                    borderTop: g.type === "horizontal" ? (g.isCenter ? "1px solid #ef4444" : "1px dashed #ef4444") : "none",
+                    width:
+                      g.type === "vertical"
+                        ? "1px"
+                        : `${g.length * zoomScale}px`,
+                    height:
+                      g.type === "horizontal"
+                        ? "1px"
+                        : `${g.length * zoomScale}px`,
+                    borderLeft:
+                      g.type === "vertical"
+                        ? g.isCenter
+                          ? "1px solid #ef4444"
+                          : "1px dashed #ef4444"
+                        : "none",
+                    borderTop:
+                      g.type === "horizontal"
+                        ? g.isCenter
+                          ? "1px solid #ef4444"
+                          : "1px dashed #ef4444"
+                        : "none",
                     opacity: 0.8,
                   }}
                 />
@@ -173,7 +190,6 @@ export const CanvasArea = ({
                   const isSelected = selectedIds.includes(obj.id);
                   const isDraggingItem = dragTarget?.id === obj.id;
                   const commonProps = {
-                    key: obj.id,
                     zoom: zoom[0],
                     isSelected,
                     tool,
@@ -188,10 +204,30 @@ export const CanvasArea = ({
                     },
                   };
 
-                  if (obj.type === "text") return <TextItem obj={obj} {...commonProps} onUpdate={updateObject} />;
-                  if (obj.type === "rect") return <RectItem obj={obj} {...commonProps} />;
-                  if (obj.type === "image") return <ImageItem obj={obj} {...commonProps} />;
-                  if (obj.type === "group") return <GroupItem obj={obj} {...commonProps} onUpdate={updateObject} />;
+                  if (obj.type === "text")
+                    return (
+                      <TextItem
+                        obj={obj}
+                        key={obj.id}
+                        {...commonProps}
+                        onUpdate={updateObject}
+                      />
+                    );
+                  if (obj.type === "rect")
+                    return <RectItem obj={obj} key={obj.id} {...commonProps} />;
+                  if (obj.type === "image")
+                    return (
+                      <ImageItem obj={obj} key={obj.id} {...commonProps} />
+                    );
+                  if (obj.type === "group")
+                    return (
+                      <GroupItem
+                        obj={obj}
+                        key={obj.id}
+                        {...commonProps}
+                        onUpdate={updateObject}
+                      />
+                    );
 
                   // UPDATE: PATH ITEM NOW HAS 'tool' PROP
                   if (obj.type === "path") {
@@ -277,7 +313,9 @@ export const CanvasArea = ({
           <ContextMenuContent>
             {selectedIds.length > 0 && (
               <>
-                <ContextMenuItem onClick={onDuplicate}>Duplicate</ContextMenuItem>
+                <ContextMenuItem onClick={onDuplicate}>
+                  Duplicate
+                </ContextMenuItem>
                 <ContextMenuSeparator />
               </>
             )}
@@ -301,7 +339,8 @@ export const CanvasArea = ({
               <ContextMenuItem onClick={onGroup}>Group</ContextMenuItem>
             )}
             {selectedIds.length === 1 &&
-              objects.find((o) => o.id === selectedIds[0])?.type === "group" && (
+              objects.find((o) => o.id === selectedIds[0])?.type ===
+                "group" && (
                 <>
                   <ContextMenuItem onClick={onUngroup}>Ungroup</ContextMenuItem>
                   <ContextMenuSeparator />

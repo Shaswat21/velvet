@@ -1,5 +1,5 @@
 import type { CanvasObject } from "@/lib/types";
-import { getRotatedBoundingBox } from "@/lib/utils/utils";
+import { getRotatedBoundingBox } from "@/lib/utils";
 
 export interface GuideLine {
   type: "horizontal" | "vertical";

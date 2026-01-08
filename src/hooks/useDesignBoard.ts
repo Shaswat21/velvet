@@ -32,7 +32,13 @@ const getRelativePos = (
   return { x, y };
 };
 
-export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
+// Updated signature to accept initial data
+export const useDesignBoard = (
+  paper: PaperKey,
+  orientation: Orientation,
+  initialObjects?: CanvasObject[],
+  initialBgColor?: string
+) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const objRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -55,7 +61,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
   const [zoom, setZoom] = useState<number[]>([40]);
   const [tool, setTool] = useState<ToolType>("select");
 
-  // History Setup
+  // FIX 1: Initialize history with imported objects
   const {
     current: objects,
     saveHistory: pushHistory,
@@ -63,10 +69,15 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     redo: performRedo,
     canUndo,
     canRedo,
-  } = useHistory<CanvasObject[]>([]);
+  } = useHistory<CanvasObject[]>(initialObjects || []);
 
-  // Local object state for fluid updates (only pushed to history on mouseUp)
-  const [localObjects, setLocalObjects] = useState<CanvasObject[]>([]);
+  // FIX 2: Initialize local state with imported objects
+  const [localObjects, setLocalObjects] = useState<CanvasObject[]>(
+    initialObjects || []
+  );
+
+  // FIX 3: Initialize background color
+  const [bgColor, setBgColor] = useState(initialBgColor || "#ffffff");
 
   // Sync history state to local state when undo/redo occurs
   useEffect(() => {
@@ -79,7 +90,6 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
   };
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [bgColor, setBgColor] = useState("#ffffff");
   const [guides, setGuides] = useState<GuideLine[]>([]);
 
   // Action Targets

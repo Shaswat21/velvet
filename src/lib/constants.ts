@@ -1,5 +1,7 @@
 import type { PaperKey } from "@/pages/Home";
 
+export const VELVET_KEY = import.meta.env.VITE_VELVET_KEY || "default-dev-key";
+
 export const DPI = 150;
 export const MM_TO_INCH = 25.4;
 

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
+import CryptoJS from "crypto-js";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -16,38 +17,107 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ArrowRight, FileText } from "lucide-react";
-import type { Orientation, PaperKey } from "@/pages/Design";
+import { toast } from "sonner";
+import { ArrowRight, FileText, Upload, LayoutTemplate } from "lucide-react";
+import type { Orientation, PaperKey } from "@/pages/Home";
+import type { CanvasObject } from "@/lib/types";
+// CHANGED: Import PAPER_SIZES here to use the shared source of truth
+import { VELVET_KEY, PAPER_SIZES } from "@/lib/constants";
 
-// Constants for preview aspect ratios
-const SIZES: Record<PaperKey, { w: number; h: number; label: string }> = {
-  A5: { w: 148, h: 210, label: "A5" },
-  A4: { w: 210, h: 297, label: "A4" },
-  A3: { w: 297, h: 420, label: "A3" },
-  A2: { w: 420, h: 594, label: "A2" },
-  Letter: { w: 216, h: 279, label: "Letter" },
-  Tabloid: { w: 279, h: 432, label: "Tabloid" },
-  Instagram: { w: 1080, h: 1080, label: "Instagram" },
-  Twitter: { w: 1200, h: 675, label: "Twitter" },
-  FHD: { w: 1920, h: 1080, label: "Full HD" },
+// Map keys to UI labels (since PAPER_SIZES only has dimensions)
+const PAPER_LABELS: Record<PaperKey, string> = {
+  A5: "A5",
+  A4: "A4",
+  A3: "A3",
+  A2: "A2",
+  Letter: "Letter",
+  Tabloid: "Tabloid",
+  Instagram: "Instagram",
+  Twitter: "Twitter",
+  FHD: "Full HD",
 };
+
+export interface ImportedDesignData {
+  paper: PaperKey;
+  orientation: Orientation;
+  objects: CanvasObject[];
+  bgColor?: string;
+}
 
 interface PaperSetupProps {
   onStart: (paper: PaperKey, orientation: Orientation) => void;
+  onImport: (data: ImportedDesignData) => void;
+  onTemplates?: () => void;
 }
 
-export default function PaperSetup({ onStart }: PaperSetupProps) {
+export default function PaperSetup({
+  onStart,
+  onImport,
+  onTemplates,
+}: PaperSetupProps) {
   const [paper, setPaper] = useState<PaperKey>("A4");
   const [orientation, setOrientation] = useState<Orientation>("portrait");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const baseSize = SIZES[paper];
+  // CHANGED: Use the imported PAPER_SIZES
+  const baseSize = PAPER_SIZES[paper];
   const width = orientation === "portrait" ? baseSize.w : baseSize.h;
   const height = orientation === "portrait" ? baseSize.h : baseSize.w;
   const ratio = width / height;
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        let content = e.target?.result as string;
+        let data;
+
+        // --- DECRYPTION ---
+        if (file.name.toLowerCase().endsWith(".velvet")) {
+          try {
+            const bytes = CryptoJS.AES.decrypt(content, VELVET_KEY);
+            const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
+            if (!decryptedString) throw new Error("Decryption failed or empty");
+            data = JSON.parse(decryptedString);
+          } catch (err) {
+            throw new Error("Invalid or corrupted Velvet project file.");
+          }
+        } else {
+          // Fallback to standard JSON
+          data = JSON.parse(content);
+        }
+
+        if (!data.paper || !data.orientation || !Array.isArray(data.objects)) {
+          throw new Error("Missing required fields.");
+        }
+
+        onImport({
+          paper: data.paper,
+          orientation: data.orientation,
+          objects: data.objects,
+          bgColor: data.bgColor || "#ffffff",
+        });
+
+        toast.success("Design imported successfully");
+      } catch (error) {
+        console.error("Import Error:", error);
+        toast.error("Failed to import design", {
+          description: error instanceof Error ? error.message : "Unknown error",
+        });
+      } finally {
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="min-h-screen w-full bg-gray-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-4xl shadow-xl grid md:grid-cols-2 overflow-hidden">
+        {/* Left Side - Visual Preview */}
         <div className="bg-gray-100 flex flex-col items-center justify-center p-10 relative overflow-hidden min-h-100 ml-6 rounded-sm">
           <div
             className="absolute inset-0 opacity-20 pointer-events-none"
@@ -67,7 +137,7 @@ export default function PaperSetup({ onStart }: PaperSetupProps) {
             <div className="text-gray-300 flex flex-col items-center gap-1">
               <FileText className="h-8 w-8" />
               <span className="text-xs font-mono">
-                {width} x {height}
+                {width} x {height} px
               </span>
             </div>
           </div>
@@ -75,11 +145,13 @@ export default function PaperSetup({ onStart }: PaperSetupProps) {
             Preview
           </p>
         </div>
+
+        {/* Right Side - Controls */}
         <div className="flex flex-col h-full border-l bg-white">
           <CardHeader className="mb-4">
             <CardTitle>New Design</CardTitle>
             <CardDescription>
-              Configure your canvas settings to get started.
+              Configure your canvas settings or import a saved file.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 flex-1">
@@ -93,9 +165,10 @@ export default function PaperSetup({ onStart }: PaperSetupProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(SIZES).map(([key, val]) => (
+                  {/* Iterate over the imported PAPER_SIZES keys */}
+                  {(Object.keys(PAPER_SIZES) as PaperKey[]).map((key) => (
                     <SelectItem key={key} value={key}>
-                      {val.label}
+                      {PAPER_LABELS[key]}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -114,7 +187,7 @@ export default function PaperSetup({ onStart }: PaperSetupProps) {
               </Tabs>
             </div>
           </CardContent>
-          <CardFooter className="border-t p-6 bg-gray-50/50 pb-0 flex-col gap-2">
+          <CardFooter className="border-t p-6 bg-gray-50/50 pb-0 flex-col gap-3">
             <Button
               className="w-full"
               size="lg"
@@ -122,13 +195,39 @@ export default function PaperSetup({ onStart }: PaperSetupProps) {
             >
               Create Canvas <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
+
+            <div className="relative w-full py-1">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-gray-50 px-2 text-gray-500">Or</span>
+              </div>
+            </div>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept=".velvet,.json,application/json,application/velvet"
+              onChange={handleFileUpload}
+            />
             <Button
               className="w-full"
               size="lg"
-              variant={"ghost"}
-              onClick={() => onStart(paper, orientation)}
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
             >
-              Select from Templates <ArrowRight className="ml-2 h-4 w-4" />
+              <Upload className="ml-2 h-4 w-4" /> Import Project
+            </Button>
+
+            <Button
+              className="w-full text-gray-500"
+              size="sm"
+              variant="ghost"
+              onClick={onTemplates}
+            >
+              <LayoutTemplate className="mr-2 h-4 w-4" /> Select from Templates
             </Button>
           </CardFooter>
         </div>

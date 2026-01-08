@@ -7,19 +7,36 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Check } from "lucide-react";
+import { Check, Download } from "lucide-react";
 import { ZOOM_PRESETS } from "@/lib/constants";
+import { ExportDialog, type ExportOptions } from "./ExportDialog";
 
 interface FooterProps {
   zoom: number[];
   setZoom: (z: number[]) => void;
   handleFit: () => void;
+  onDownload?: (options: ExportOptions) => Promise<void>;
 }
 
-export const Footer = ({ zoom, setZoom, handleFit }: FooterProps) => {
+export const Footer = ({
+  zoom,
+  setZoom,
+  handleFit,
+  onDownload,
+}: FooterProps) => {
+  // CHANGED: Make this handler async to pass the Promise up to ExportDialog
+  const handleExport = async (options: ExportOptions) => {
+    if (onDownload) {
+      await onDownload(options);
+    } else {
+      console.log("Export options:", options);
+    }
+  };
+
   return (
     <footer className="px-4 py-3 bg-white border-t flex items-center justify-end z-50 relative">
-      <div className="flex items-center gap-3 w-64">
+      <div className="flex items-center gap-3">
+        {/* Zoom Slider */}
         <Slider
           value={zoom}
           onValueChange={setZoom}
@@ -28,6 +45,8 @@ export const Footer = ({ zoom, setZoom, handleFit }: FooterProps) => {
           step={1}
           className="w-32"
         />
+
+        {/* Zoom Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -56,6 +75,24 @@ export const Footer = ({ zoom, setZoom, handleFit }: FooterProps) => {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Divider */}
+        <div className="h-4 w-px bg-gray-300" />
+
+        {/* Export Button with Dialog */}
+        <ExportDialog
+          onExport={handleExport}
+          trigger={
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-gray-600 hover:text-gray-900"
+            >
+              <Download className="h-3.5 w-3.5 mr-2" />
+              Export
+            </Button>
+          }
+        />
       </div>
     </footer>
   );
