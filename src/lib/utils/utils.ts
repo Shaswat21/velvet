@@ -1,4 +1,4 @@
-import { type CanvasObject } from "./types";
+import { type CanvasObject } from "../types";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 

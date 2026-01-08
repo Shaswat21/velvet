@@ -84,7 +84,7 @@ export const TransformWrapper = ({
         pointerEvents: effectivePointerEvents,
         cursor:
           tool !== "select"
-            ? "crosshair" // Force crosshair when drawing over items
+            ? "crosshair"
             : obj.isLocked
             ? "default"
             : "move",
@@ -94,7 +94,7 @@ export const TransformWrapper = ({
       {children}
 
       {shouldShowHandles && (
-        <div className="absolute -inset-1 border-2 border-blue-500 pointer-events-none">
+        <div className="absolute inset-0 border-2 border-blue-500 pointer-events-none">
           {obj.isLocked ? (
             <div className="absolute -top-3 -left-3 bg-gray-100 border border-gray-400 p-1 rounded-sm shadow-sm pointer-events-auto z-50">
               <LockIcon className="w-3 h-3 text-gray-500" />

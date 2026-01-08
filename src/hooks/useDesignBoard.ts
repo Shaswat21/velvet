@@ -13,18 +13,13 @@ import type {
   TextObject,
   RectObject,
   ImageObject,
-  GroupObject,
   PathObject,
 } from "@/lib/types";
-import { getRotatedBoundingBox, rotatePoint } from "@/lib/utils";
-
-export interface GuideLine {
-  type: "horizontal" | "vertical";
-  x: number;
-  y: number;
-  length: number;
-  isCenter: boolean;
-}
+import { calculateSnapping, type GuideLine } from "@/lib/utils/snappingUtils";
+import { calculateResize, calculateRotation } from "@/lib/utils/transformUtils";
+import { performGroup, performUngroup } from "@/lib/utils/groupingUtils";
+import { useHistory } from "./useHistory";
+import { useCanvasShortcuts } from "./useCanvasShortcuts";
 
 const getRelativePos = (
   e: MouseEvent | React.MouseEvent,
@@ -54,18 +49,35 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
   const shouldCenterZoom = useRef(false);
   const drawingStartPos = useRef<{ x: number; y: number } | null>(null);
   const selectionStartPos = useRef<{ x: number; y: number } | null>(null);
-
-  // --- HISTORY STATE ---
-  const [history, setHistory] = useState<CanvasObject[][]>([[]]);
-  const [historyStep, setHistoryStep] = useState(0);
-
-  // Ref to store state before an interaction starts
   const objectsSnapshot = useRef<string>("[]");
 
   // --- STATE ---
   const [zoom, setZoom] = useState<number[]>([40]);
   const [tool, setTool] = useState<ToolType>("select");
-  const [objects, setObjects] = useState<CanvasObject[]>([]);
+
+  // History Setup
+  const {
+    current: objects,
+    saveHistory: pushHistory,
+    undo: performUndo,
+    redo: performRedo,
+    canUndo,
+    canRedo,
+  } = useHistory<CanvasObject[]>([]);
+
+  // Local object state for fluid updates (only pushed to history on mouseUp)
+  const [localObjects, setLocalObjects] = useState<CanvasObject[]>([]);
+
+  // Sync history state to local state when undo/redo occurs
+  useEffect(() => {
+    if (objects) setLocalObjects(objects);
+  }, [objects]);
+
+  const setObjects = (newObjs: CanvasObject[], save: boolean = false) => {
+    setLocalObjects(newObjs);
+    if (save) pushHistory(newObjs);
+  };
+
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bgColor, setBgColor] = useState("#ffffff");
   const [guides, setGuides] = useState<GuideLine[]>([]);
@@ -83,7 +95,6 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     w: number;
     h: number;
   } | null>(null);
-
   const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>(
     []
   );
@@ -91,38 +102,6 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
   const { w, h } = PAPER_SIZES[paper];
   const width = orientation === "portrait" ? w : h;
   const height = orientation === "portrait" ? h : w;
-
-  /* --- HISTORY HELPERS --- */
-  const saveHistory = (newObjects: CanvasObject[]) => {
-    const currentHistoryStr = JSON.stringify(history[historyStep]);
-    const newObjectsStr = JSON.stringify(newObjects);
-    if (currentHistoryStr === newObjectsStr) return;
-
-    const newHistory = history.slice(0, historyStep + 1);
-    newHistory.push(newObjects);
-    if (newHistory.length > 50) newHistory.shift();
-
-    setHistory(newHistory);
-    setHistoryStep(newHistory.length - 1);
-  };
-
-  const undo = useCallback(() => {
-    if (historyStep > 0) {
-      const prevStep = historyStep - 1;
-      setObjects(history[prevStep]);
-      setHistoryStep(prevStep);
-      setSelectedIds([]);
-    }
-  }, [history, historyStep]);
-
-  const redo = useCallback(() => {
-    if (historyStep < history.length - 1) {
-      const nextStep = historyStep + 1;
-      setObjects(history[nextStep]);
-      setHistoryStep(nextStep);
-      setSelectedIds([]);
-    }
-  }, [history, historyStep]);
 
   /* --- HELPERS --- */
   const getPointerPos = (e: React.MouseEvent) => {
@@ -135,13 +114,10 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     updates: Partial<CanvasObject>,
     saveToHistory: boolean = false
   ) => {
-    const newObjects = objects.map(
+    const newObjects = localObjects.map(
       (obj) => (obj.id === id ? { ...obj, ...updates } : obj) as CanvasObject
     );
-    setObjects(newObjects);
-    if (saveToHistory) {
-      saveHistory(newObjects);
-    }
+    setObjects(newObjects, saveToHistory);
   };
 
   const cloneCanvasObject = (obj: CanvasObject): CanvasObject => {
@@ -157,6 +133,22 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
   };
 
   /* --- ACTIONS --- */
+  const handleUndo = useCallback(() => {
+    const prev = performUndo();
+    if (prev) {
+      setLocalObjects(prev);
+      setSelectedIds([]);
+    }
+  }, [performUndo]);
+
+  const handleRedo = useCallback(() => {
+    const next = performRedo();
+    if (next) {
+      setLocalObjects(next);
+      setSelectedIds([]);
+    }
+  }, [performRedo]);
+
   const handleLayerSelect = (id: string, multi: boolean) => {
     if (multi)
       setSelectedIds((prev) =>
@@ -166,9 +158,9 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
   };
 
   const handleStartRotation = (e: React.MouseEvent, id: string) => {
-    const obj = objects.find((o) => o.id === id);
+    const obj = localObjects.find((o) => o.id === id);
     if (obj?.isLocked) return;
-    objectsSnapshot.current = JSON.stringify(objects);
+    objectsSnapshot.current = JSON.stringify(localObjects);
     const canvasEl = canvasRef.current;
     if (obj && canvasEl) {
       const canvasRect = canvasEl.getBoundingClientRect();
@@ -187,11 +179,10 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
   };
 
   const toggleLock = (id: string) => {
-    const newObjects = objects.map((obj) =>
+    const newObjects = localObjects.map((obj) =>
       obj.id === id ? { ...obj, isLocked: !obj.isLocked } : obj
     );
-    setObjects(newObjects);
-    saveHistory(newObjects);
+    setObjects(newObjects, true);
   };
 
   const handleDuplicate = () => {
@@ -199,7 +190,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     const newItems: CanvasObject[] = [];
     const newSelectedIds: string[] = [];
     selectedIds.forEach((id) => {
-      const original = objects.find((o) => o.id === id);
+      const original = localObjects.find((o) => o.id === id);
       if (original) {
         const cloned = cloneCanvasObject(original);
         cloned.x += 20;
@@ -208,133 +199,25 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
         newSelectedIds.push(cloned.id);
       }
     });
-    const finalObjects = [...objects, ...newItems];
-    setObjects(finalObjects);
+    const finalObjects = [...localObjects, ...newItems];
+    setObjects(finalObjects, true);
     setSelectedIds(newSelectedIds);
-    saveHistory(finalObjects);
   };
 
   const handleGroup = () => {
-    if (selectedIds.length < 2) return;
-    const itemsToGroup = objects.filter((o) => selectedIds.includes(o.id));
-    if (itemsToGroup.some((o) => o.isLocked)) return;
-    if (itemsToGroup.length === 0) return;
-
-    const flattenItem = (item: CanvasObject): CanvasObject[] => {
-      if (item.type !== "group") return [item];
-      const group = item as GroupObject;
-      const scaleX = group.width / group.originalWidth;
-      const scaleY = group.height / group.originalHeight;
-      const groupCx = group.x + group.width / 2;
-      return group.objects.flatMap((child: any) => {
-        const newChildWidth = child.width * scaleX;
-        const newChildHeight = child.height * scaleY;
-        const childCxRelative = (child.x + child.width / 2) * scaleX;
-        const childCyRelative = (child.y + child.height / 2) * scaleY;
-        const dx = childCxRelative - group.width / 2;
-        const dy = childCyRelative - group.height / 2;
-        const rotatedOffset = rotatePoint(dx, dy, 0, 0, group.rotation);
-        const newWorldCx = groupCx + rotatedOffset.x;
-        const newWorldCy = group.y + group.height / 2 + rotatedOffset.y;
-        const flattenedChild: CanvasObject = {
-          ...child,
-          id: Math.random().toString(36).substr(2, 9),
-          x: newWorldCx - newChildWidth / 2,
-          y: newWorldCy - newChildHeight / 2,
-          width: newChildWidth,
-          height: newChildHeight,
-          rotation: (child.rotation + group.rotation) % 360,
-          ...(child.type === "group"
-            ? {
-                originalWidth: (child as GroupObject).originalWidth * scaleX,
-                originalHeight: (child as GroupObject).originalHeight * scaleY,
-              }
-            : {}),
-        } as CanvasObject;
-        return flattenItem(flattenedChild);
-      });
-    };
-
-    const flatItemsToGroup = itemsToGroup.flatMap((item) => flattenItem(item));
-    let minX = Infinity,
-      minY = Infinity,
-      maxX = -Infinity,
-      maxY = -Infinity;
-    flatItemsToGroup.forEach((obj) => {
-      const bounds = getRotatedBoundingBox(obj);
-      if (bounds.minX < minX) minX = bounds.minX;
-      if (bounds.minY < minY) minY = bounds.minY;
-      if (bounds.maxX > maxX) maxX = bounds.maxX;
-      if (bounds.maxY > maxY) maxY = bounds.maxY;
-    });
-
-    const groupWidth = maxX - minX;
-    const groupHeight = maxY - minY;
-    const groupedChildren = flatItemsToGroup.map((obj) => ({
-      ...obj,
-      x: obj.x - minX,
-      y: obj.y - minY,
-    }));
-    const newGroupId = Math.random().toString(36).substr(2, 9);
-    const groupObj: GroupObject = {
-      id: newGroupId,
-      type: "group",
-      x: minX,
-      y: minY,
-      width: groupWidth,
-      height: groupHeight,
-      originalWidth: groupWidth,
-      originalHeight: groupHeight,
-      rotation: 0,
-      objects: groupedChildren,
-    };
-    const remainingObjects = objects.filter((o) => !selectedIds.includes(o.id));
-    const finalObjects = [...remainingObjects, groupObj];
-    setObjects(finalObjects);
+    const result = performGroup(localObjects, selectedIds);
+    if (!result) return;
+    const { finalObjects, newGroupId } = result;
+    setObjects(finalObjects, true);
     setSelectedIds([newGroupId]);
-    saveHistory(finalObjects);
   };
 
   const handleUngroup = () => {
-    if (selectedIds.length !== 1) return;
-    const group = objects.find((o) => o.id === selectedIds[0]);
-    if (!group || group.type !== "group" || group.isLocked) return;
-
-    const scaleX = group.width / group.originalWidth;
-    const scaleY = group.height / group.originalHeight;
-    const groupCx = group.x + group.width / 2;
-    const groupCy = group.y + group.height / 2;
-    const restoredChildren = group.objects.map((child: any) => {
-      const childCxRelative = (child.x + child.width / 2) * scaleX;
-      const childCyRelative = (child.y + child.height / 2) * scaleY;
-      const dx = childCxRelative - group.width / 2;
-      const dy = childCyRelative - group.height / 2;
-      const rotatedOffset = rotatePoint(dx, dy, 0, 0, group.rotation);
-      const newWorldCx = groupCx + rotatedOffset.x;
-      const newWorldCy = groupCy + rotatedOffset.y;
-      const newChildWidth = child.width * scaleX;
-      const newChildHeight = child.height * scaleY;
-      return {
-        ...child,
-        id: Math.random().toString(36).substr(2, 9),
-        x: newWorldCx - newChildWidth / 2,
-        y: newWorldCy - newChildHeight / 2,
-        width: newChildWidth,
-        height: newChildHeight,
-        rotation: (child.rotation + group.rotation) % 360,
-        ...(child.type === "group"
-          ? {
-              originalWidth: (child as GroupObject).originalWidth * scaleX,
-              originalHeight: (child as GroupObject).originalHeight * scaleY,
-            }
-          : {}),
-      } as CanvasObject;
-    });
-    const remaining = objects.filter((o) => o.id !== group.id);
-    const finalObjects = [...remaining, ...restoredChildren];
-    setObjects(finalObjects);
-    setSelectedIds(restoredChildren.map((c: any) => c.id));
-    saveHistory(finalObjects);
+    const result = performUngroup(localObjects, selectedIds);
+    if (!result) return;
+    const { finalObjects, newSelectedIds } = result;
+    setObjects(finalObjects, true);
+    setSelectedIds(newSelectedIds);
   };
 
   const handleAddText = () => {
@@ -361,11 +244,10 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       letterSpacing: 0,
       lineHeight: 1.2,
     };
-    const finalObjects = [...objects, newText];
-    setObjects(finalObjects);
+    const finalObjects = [...localObjects, newText];
+    setObjects(finalObjects, true);
     setSelectedIds([newId]);
     setTool("select");
-    saveHistory(finalObjects);
   };
 
   const handleAddImage = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -395,11 +277,10 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
           strokeColor: "transparent",
           strokeWidth: 0,
         };
-        const finalObjects = [...objects, newImg];
-        setObjects(finalObjects);
+        const finalObjects = [...localObjects, newImg];
+        setObjects(finalObjects, true);
         setSelectedIds([newId]);
         setTool("select");
-        saveHistory(finalObjects);
       };
     };
     reader.readAsDataURL(file);
@@ -408,20 +289,28 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
 
   const handleDeleteSelected = () => {
     if (selectedIds.length > 0) {
-      const finalObjects = objects.filter(
+      const finalObjects = localObjects.filter(
         (t) => !selectedIds.includes(t.id) || t.isLocked
       );
-      setObjects(finalObjects);
+      setObjects(finalObjects, true);
       setSelectedIds((prev) =>
-        prev.filter((id) => objects.find((o) => o.id === id)?.isLocked)
+        prev.filter((id) => localObjects.find((o) => o.id === id)?.isLocked)
       );
-      saveHistory(finalObjects);
     } else {
-      setObjects([]);
+      setObjects([], true);
       setBgColor("#ffffff");
-      saveHistory([]);
     }
   };
+
+  // --- Attach Shortcuts ---
+  useCanvasShortcuts({
+    undo: handleUndo,
+    redo: handleRedo,
+    handleGroup,
+    handleUngroup,
+    handleDuplicate,
+    handleDelete: handleDeleteSelected,
+  });
 
   /* --- EVENT HANDLERS --- */
   const handleContainerMouseDown = (e: React.MouseEvent) => {
@@ -435,7 +324,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
         if (!e.shiftKey && !e.ctrlKey && !e.metaKey) setSelectedIds([]);
         isSelecting.current = true;
         selectionStartPos.current = getPointerPos(e);
-        objectsSnapshot.current = JSON.stringify(objects);
+        objectsSnapshot.current = JSON.stringify(localObjects);
       } else if (tool === "rect") {
         isDrawing.current = true;
         drawingStartPos.current = getPointerPos(e);
@@ -462,7 +351,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
 
     if (!dragTarget && guides.length > 0) setGuides([]);
 
-    // Selecting
+    // 1. Selecting
     if (isSelecting.current && selectionStartPos.current) {
       const sx = selectionStartPos.current.x;
       const sy = selectionStartPos.current.y;
@@ -474,7 +363,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       });
       return;
     }
-    // Rect Draw
+    // 2. Rect Draw
     if (isDrawing.current && tool === "rect" && drawingStartPos.current) {
       const sx = drawingStartPos.current.x;
       const sy = drawingStartPos.current.y;
@@ -493,252 +382,75 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       });
       return;
     }
-    // Pen Draw
+    // 3. Pen Draw
     if (isDrawing.current && tool === "pen") {
       setCurrentPath((prev) => [...prev, { x, y }]);
       return;
     }
-    // Rotate
+    // 4. Rotate
     if (rotatingTarget) {
       e.preventDefault();
-      const obj = objects.find((o) => o.id === rotatingTarget.id);
+      const obj = localObjects.find((o) => o.id === rotatingTarget.id);
       if (obj?.isLocked) return;
-      const { cx, cy, startAngle, initialRotation } = rotatingTarget;
-      const currentAngle = Math.atan2(e.clientY - cy, e.clientX - cx);
-      const angleDiff = (currentAngle - startAngle) * (180 / Math.PI);
-      updateObject(rotatingTarget.id, {
-        rotation: initialRotation + angleDiff,
-      });
+      const newRotation = calculateRotation(
+        e,
+        rotatingTarget.cx,
+        rotatingTarget.cy,
+        rotatingTarget.startAngle,
+        rotatingTarget.initialRotation
+      );
+      updateObject(rotatingTarget.id, { rotation: newRotation });
       return;
     }
-    // Resize
+    // 5. Resize
     if (resizingTarget) {
       e.preventDefault();
-      const obj = objects.find((o) => o.id === resizingTarget.id);
+      const obj = localObjects.find((o) => o.id === resizingTarget.id);
       if (!obj || obj.isLocked) return;
 
-      const mouseX = e.pageX;
-      const mouseY = e.pageY;
-      const dxWorld = (mouseX - resizingTarget.startX) / currentZoom;
-      const dyWorld = (mouseY - resizingTarget.startY) / currentZoom;
-      const angleRad = (obj.rotation * Math.PI) / 180;
-      const cos = Math.cos(-angleRad);
-      const sin = Math.sin(-angleRad);
-      const dxLocal = dxWorld * cos - dyWorld * sin;
-      const dyLocal = dxWorld * sin + dyWorld * cos;
-      const { direction, startW, startH, startXPos, startYPos, startFontSize } =
-        resizingTarget;
-      let newWidth = startW;
-      let newHeight = startH;
-      if (direction.includes("e")) newWidth = Math.max(10, startW + dxLocal);
-      else if (direction.includes("w"))
-        newWidth = Math.max(10, startW - dxLocal);
-      if (direction.includes("s")) newHeight = Math.max(10, startH + dyLocal);
-      else if (direction.includes("n"))
-        newHeight = Math.max(10, startH - dyLocal);
-
-      let fontSizeUpdate = {};
-      if (obj.type === "text" && direction.length === 2) {
-        const scale = newWidth / startW;
-        newHeight = startH * scale;
-        if (startFontSize)
-          fontSizeUpdate = { fontSize: Math.max(1, startFontSize * scale) };
-      }
-
-      const wDiff = newWidth - startW;
-      const hDiff = newHeight - startH;
-      let centerXShiftLocal = 0;
-      let centerYShiftLocal = 0;
-      if (direction.includes("e")) centerXShiftLocal = wDiff / 2;
-      else if (direction.includes("w")) centerXShiftLocal = -wDiff / 2;
-      if (direction.includes("s")) centerYShiftLocal = hDiff / 2;
-      else if (direction.includes("n")) centerYShiftLocal = -hDiff / 2;
-
-      const cosR = Math.cos(angleRad);
-      const sinR = Math.sin(angleRad);
-      const centerXShiftWorld =
-        centerXShiftLocal * cosR - centerYShiftLocal * sinR;
-      const centerYShiftWorld =
-        centerXShiftLocal * sinR + centerYShiftLocal * cosR;
-      const oldCenterX = startXPos + startW / 2;
-      const oldCenterY = startYPos + startH / 2;
-      const newCenterX = oldCenterX + centerXShiftWorld;
-      const newCenterY = oldCenterY + centerYShiftWorld;
-      const newX = newCenterX - newWidth / 2;
-      const newY = newCenterY - newHeight / 2;
-
-      const updates: any = {
-        x: newX,
-        y: newY,
-        width: newWidth,
-        ...fontSizeUpdate,
-      };
-      if (obj.type !== "text") updates.height = newHeight;
-      else if (direction.length === 2) updates.height = newHeight;
-      updateObject(resizingTarget.id, updates);
+      const newDimensions = calculateResize(
+        obj,
+        e.pageX,
+        e.pageY,
+        resizingTarget,
+        currentZoom
+      );
+      updateObject(resizingTarget.id, newDimensions);
       return;
     }
 
-    // --- DRAG WITH ALIGNMENT GUIDES ---
+    // 6. DRAG WITH SNAPPING
     if (dragTarget) {
       e.preventDefault();
-      const draggedObj = objects.find((o) => o.id === dragTarget.id);
+      const draggedObj = localObjects.find((o) => o.id === dragTarget.id);
       if (!draggedObj || draggedObj.isLocked) return;
 
       const rawDx = e.movementX / currentZoom;
       const rawDy = e.movementY / currentZoom;
 
-      const newX = draggedObj.x + rawDx;
-      const newY = draggedObj.y + rawDy;
-      const wObj = draggedObj.width;
-      const hObj = draggedObj.height;
+      const { snapDx, snapDy, activeGuides } = calculateSnapping(
+        draggedObj,
+        draggedObj.x + rawDx,
+        draggedObj.y + rawDy,
+        localObjects,
+        width,
+        height,
+        selectedIds
+      );
 
-      const dEdges = {
-        left: newX,
-        midX: newX + wObj / 2,
-        right: newX + wObj,
-        top: newY,
-        midY: newY + hObj / 2,
-        bottom: newY + hObj,
-      };
+      setGuides(activeGuides);
 
-      const SNAP_THRESHOLD = 5;
-      const activeGuides: GuideLine[] = [];
-
-      let minSnapDistX = SNAP_THRESHOLD;
-      let minSnapDistY = SNAP_THRESHOLD;
-      let snapDx = 0;
-      let snapDy = 0;
-
-      // Helper to check alignment distance
-      const checkAlign = (
-        val1: number,
-        val2: number,
-        _isCenter: boolean,
-        guideType: "vertical" | "horizontal"
-      ) => {
-        const dist = Math.abs(val1 - val2);
-        const minSnap = guideType === "vertical" ? minSnapDistX : minSnapDistY;
-
-        if (dist < minSnap) {
-          if (guideType === "vertical") {
-            minSnapDistX = dist;
-            snapDx = val2 - val1;
-          } else {
-            minSnapDistY = dist;
-            snapDy = val2 - val1;
-          }
-          return true;
-        } else if (dist === minSnap && dist < SNAP_THRESHOLD) {
-          return true;
-        }
-        return false;
-      };
-
-      // 1. Center of Canvas Guides
-      const canvasMidX = width / 2;
-      const canvasMidY = height / 2;
-
-      if (checkAlign(dEdges.midX, canvasMidX, true, "vertical")) {
-        activeGuides.push({
-          type: "vertical",
-          x: canvasMidX,
-          y: 0,
-          length: height,
-          isCenter: true,
-        });
-      }
-      if (checkAlign(dEdges.midY, canvasMidY, true, "horizontal")) {
-        activeGuides.push({
-          type: "horizontal",
-          x: 0,
-          y: canvasMidY,
-          length: width,
-          isCenter: true,
-        });
-      }
-
-      // 2. Object-to-Object Alignment
-      objects.forEach((other) => {
-        if (selectedIds.includes(other.id)) return; // Don't snap to self
-
-        const oEdges = {
-          left: other.x,
-          midX: other.x + other.width / 2,
-          right: other.x + other.width,
-          top: other.y,
-          midY: other.y + other.height / 2,
-          bottom: other.y + other.height,
-        };
-
-        // Vertical Comparisons (X-axis alignment)
-        const xComparisons = [
-          { dVal: dEdges.left, oVal: oEdges.left, isCenter: false },
-          { dVal: dEdges.left, oVal: oEdges.right, isCenter: false },
-          { dVal: dEdges.midX, oVal: oEdges.midX, isCenter: true },
-          { dVal: dEdges.right, oVal: oEdges.left, isCenter: false },
-          { dVal: dEdges.right, oVal: oEdges.right, isCenter: false },
-        ];
-
-        xComparisons.forEach((comp) => {
-          if (checkAlign(comp.dVal, comp.oVal, comp.isCenter, "vertical")) {
-            const startYGuide = Math.min(dEdges.top, oEdges.top);
-            const endYGuide = Math.max(dEdges.bottom, oEdges.bottom);
-            activeGuides.push({
-              type: "vertical",
-              x: comp.oVal,
-              y: startYGuide,
-              length: endYGuide - startYGuide,
-              isCenter: comp.isCenter,
-            });
-          }
-        });
-
-        // Horizontal Comparisons (Y-axis alignment)
-        const yComparisons = [
-          { dVal: dEdges.top, oVal: oEdges.top, isCenter: false },
-          { dVal: dEdges.top, oVal: oEdges.bottom, isCenter: false },
-          { dVal: dEdges.midY, oVal: oEdges.midY, isCenter: true },
-          { dVal: dEdges.bottom, oVal: oEdges.top, isCenter: false },
-          { dVal: dEdges.bottom, oVal: oEdges.bottom, isCenter: false },
-        ];
-
-        yComparisons.forEach((comp) => {
-          if (checkAlign(comp.dVal, comp.oVal, comp.isCenter, "horizontal")) {
-            const startXGuide = Math.min(dEdges.left, oEdges.left);
-            const endXGuide = Math.max(dEdges.right, oEdges.right);
-            activeGuides.push({
-              type: "horizontal",
-              x: startXGuide,
-              y: comp.oVal,
-              length: endXGuide - startXGuide,
-              isCenter: comp.isCenter,
-            });
-          }
-        });
-      });
-
-      // Filter only the best snaps
-      const bestGuides = activeGuides.filter((g) => {
-        // Keep all that match the snap distance (since we update snapDx/Dy in real time)
-        return true;
-      });
-
-      setGuides(bestGuides);
-
-      // Apply snap
       const finalDx = rawDx + snapDx;
       const finalDy = rawDy + snapDy;
 
-      // Update positions
       selectedIds.forEach((id) => {
-        const obj = objects.find((o) => o.id === id);
+        const obj = localObjects.find((o) => o.id === id);
         if (obj) updateObject(id, { x: obj.x + finalDx, y: obj.y + finalDy });
       });
       return;
     }
 
-    // Pan
+    // 7. Pan
     if (isDragging.current && containerRef.current) {
       e.preventDefault();
       containerRef.current.scrollLeft =
@@ -753,7 +465,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
 
     // 1. Drop/Delete Logic
     if (dragTarget) {
-      const draggedObj = objects.find((o) => o.id === dragTarget.id);
+      const draggedObj = localObjects.find((o) => o.id === dragTarget.id);
       if (draggedObj) {
         const objRight = draggedObj.x + draggedObj.width;
         const objBottom = draggedObj.y + draggedObj.height;
@@ -763,29 +475,29 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
           objBottom < 0 ||
           draggedObj.y > height;
         if (isOutside) {
-          const finalObjects = objects.filter((o) => o.id !== dragTarget.id);
-          setObjects(finalObjects);
+          const finalObjects = localObjects.filter(
+            (o) => o.id !== dragTarget.id
+          );
+          setObjects(finalObjects, true);
           setSelectedIds((prev) => prev.filter((id) => id !== dragTarget.id));
-          saveHistory(finalObjects);
           setDragTarget(null);
           isDragging.current = false;
           return;
         }
       }
-
-      if (objectsSnapshot.current !== JSON.stringify(objects)) {
-        saveHistory(objects);
+      if (objectsSnapshot.current !== JSON.stringify(localObjects)) {
+        setObjects(localObjects, true); // Commit history
       }
     }
 
     if (resizingTarget || rotatingTarget) {
-      if (objectsSnapshot.current !== JSON.stringify(objects)) {
-        saveHistory(objects);
+      if (objectsSnapshot.current !== JSON.stringify(localObjects)) {
+        setObjects(localObjects, true); // Commit history
       }
     }
 
     if (isSelecting.current && selectionBox) {
-      const selected = objects
+      const selected = localObjects
         .filter(
           (obj) =>
             !obj.isLocked &&
@@ -804,12 +516,11 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
         ...tempRect,
         id: Math.random().toString(36).substr(2, 9),
       };
-      const finalObjects = [...objects, newObj];
-      setObjects(finalObjects);
+      const finalObjects = [...localObjects, newObj];
+      setObjects(finalObjects, true);
       setSelectedIds([newObj.id]);
       setTempRect(null);
       setTool("select");
-      saveHistory(finalObjects);
     }
 
     if (isDrawing.current && tool === "pen" && currentPath.length > 1) {
@@ -817,14 +528,8 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       const ys = currentPath.map((p) => p.y);
       const minX = Math.min(...xs);
       const minY = Math.min(...ys);
-      const maxX = Math.max(...xs);
-      const maxY = Math.max(...ys);
-      const width = Math.max(maxX - minX, 1);
-      const height = Math.max(maxY - minY, 1);
-      const relativePoints = currentPath.map((p) => ({
-        x: p.x - minX,
-        y: p.y - minY,
-      }));
+      const width = Math.max(Math.max(...xs) - minX, 1);
+      const height = Math.max(Math.max(...ys) - minY, 1);
 
       const newPath: PathObject = {
         id: Math.random().toString(36).substr(2, 9),
@@ -834,17 +539,15 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
         width,
         height,
         rotation: 0,
-        points: relativePoints,
+        points: currentPath.map((p) => ({ x: p.x - minX, y: p.y - minY })),
         strokeColor: "#000000",
         strokeWidth: 3,
         opacity: 1,
       };
-
-      const finalObjects = [...objects, newPath];
-      setObjects(finalObjects);
+      const finalObjects = [...localObjects, newPath];
+      setObjects(finalObjects, true);
       setSelectedIds([newPath.id]);
       setCurrentPath([]);
-      saveHistory(finalObjects);
     } else {
       setCurrentPath([]);
     }
@@ -861,46 +564,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       containerRef.current.style.cursor = tool === "hand" ? "grab" : "";
   };
 
-  // --- Effects ---
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.key.toLowerCase() === "z" &&
-        !e.shiftKey
-      ) {
-        e.preventDefault();
-        undo();
-        return;
-      }
-      if (
-        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") ||
-        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && e.shiftKey)
-      ) {
-        e.preventDefault();
-        redo();
-        return;
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "g") {
-        e.preventDefault();
-        e.shiftKey ? handleUngroup() : handleGroup();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
-        e.preventDefault();
-        handleDuplicate();
-      }
-      if (
-        e.key === "Delete" ||
-        (e.key === "Backspace" &&
-          document.activeElement?.tagName !== "TEXTAREA" &&
-          document.activeElement?.tagName !== "INPUT")
-      )
-        handleDeleteSelected();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedIds, objects, undo, redo, history, historyStep]);
-
+  // --- Viewport/Zoom Effects ---
   useEffect(() => {
     const container = containerRef.current;
     if (container) {
@@ -923,10 +587,8 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
       handleGlobalMouseMove(e as unknown as React.MouseEvent);
     const handleMouseUpWrapper = (e: Event) =>
       handleGlobalMouseUp(e as unknown as React.MouseEvent);
-
     window.addEventListener("mousemove", handleMouseMoveWrapper);
     window.addEventListener("mouseup", handleMouseUpWrapper);
-
     return () => {
       window.removeEventListener("mousemove", handleMouseMoveWrapper);
       window.removeEventListener("mouseup", handleMouseUpWrapper);
@@ -936,7 +598,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     resizingTarget,
     rotatingTarget,
     selectionBox,
-    objects,
+    localObjects,
     selectedIds,
     tool,
     width,
@@ -945,10 +607,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     currentPath,
   ]);
 
-  useEffect(() => {
-    if (containerRef.current) containerRef.current.style.cursor = "";
-  }, [tool]);
-
+  // Center Zoom Logic
   useLayoutEffect(() => {
     if (!containerRef.current) return;
     if (shouldCenterZoom.current) {
@@ -970,6 +629,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     }
   }, [zoom]);
 
+  // Canvas Resize Logic
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
@@ -996,11 +656,11 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
   };
 
   const setDragTargetWithSnapshot = (t: any) => {
-    objectsSnapshot.current = JSON.stringify(objects);
+    objectsSnapshot.current = JSON.stringify(localObjects);
     setDragTarget(t);
   };
   const setResizingTargetWithSnapshot = (t: any) => {
-    objectsSnapshot.current = JSON.stringify(objects);
+    objectsSnapshot.current = JSON.stringify(localObjects);
     setResizingTarget(t);
   };
 
@@ -1012,8 +672,8 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     setZoom,
     tool,
     setTool,
-    objects,
-    setObjects,
+    objects: localObjects,
+    setObjects: (objs: CanvasObject[]) => setObjects(objs, true),
     selectedIds,
     setSelectedIds,
     bgColor,
@@ -1023,7 +683,7 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     selectionBox,
     singleSelectedObject:
       selectedIds.length === 1
-        ? objects.find((t) => t.id === selectedIds[0])
+        ? localObjects.find((t) => t.id === selectedIds[0])
         : undefined,
     width,
     height,
@@ -1046,9 +706,9 @@ export const useDesignBoard = (paper: PaperKey, orientation: Orientation) => {
     toggleLock,
     isDrawing: isDrawing.current,
     currentPath,
-    undo,
-    redo,
-    canUndo: historyStep > 0,
-    canRedo: historyStep < history.length - 1,
+    undo: handleUndo,
+    redo: handleRedo,
+    canUndo,
+    canRedo,
   };
 };
