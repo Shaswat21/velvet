@@ -1,6 +1,17 @@
-import type { PaperKey } from "@/pages/Home";
-
 export const VELVET_KEY = import.meta.env.VITE_VELVET_KEY || "default-dev-key";
+
+export type PaperKey =
+  | "A5"
+  | "A4"
+  | "A3"
+  | "A2"
+  | "Letter"
+  | "Tabloid"
+  | "Mobile"
+  | "Instagram"
+  | "Twitter"
+  | "FHD";
+export type Orientation = "portrait" | "landscape";
 
 export const DPI = 150;
 export const MM_TO_INCH = 25.4;
@@ -17,6 +28,7 @@ export const PAPER_SIZES: Record<PaperKey, { w: number; h: number }> = {
   A2: getSizeFromMM(420, 594),
   Letter: getSizeFromMM(215.9, 279.4),
   Tabloid: getSizeFromMM(279.4, 431.8),
+  Mobile: { w: 390, h: 700 },
   Instagram: { w: 1080, h: 1080 },
   Twitter: { w: 1200, h: 675 },
   FHD: { w: 1920, h: 1080 },

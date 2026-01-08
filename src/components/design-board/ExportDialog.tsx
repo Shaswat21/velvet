@@ -17,8 +17,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Download, Loader2, Lock } from "lucide-react";
+import { Download, Loader2, Lock, Save } from "lucide-react";
 
 export type ExportFormat =
   | "png"
@@ -27,12 +28,18 @@ export type ExportFormat =
   | "svg"
   | "json"
   | "gif"
-  | "velvet";
+  | "velvet"
+  | "template"; // Added template format
 
 export interface ExportOptions {
   format: ExportFormat;
   transparent: boolean;
   compress: boolean;
+  templateMeta?: {
+    id: string;
+    name: string;
+    category: string;
+  };
 }
 
 interface ExportDialogProps {
@@ -40,6 +47,7 @@ interface ExportDialogProps {
   trigger: React.ReactNode;
 }
 
+// --- Reusable Premium Label ---
 function PremiumLabel({ label }: { label: string }) {
   return (
     <div className="flex items-center justify-between w-full gap-2">
@@ -58,25 +66,38 @@ export function ExportDialog({ onExport, trigger }: ExportDialogProps) {
   const [format, setFormat] = useState<ExportFormat>("png");
   const [transparent, setTransparent] = useState(true);
   const [compress, setCompress] = useState(false);
+
+  // Template State
+  const [templateName, setTemplateName] = useState("");
+  const [category, setCategory] = useState("Social Media");
+
   const [open, setOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  // --- LOGIC: Determine availability based on format ---
+  // --- LOGIC ---
+  const isTemplate = format === "velvet" || format === "template";
+
   const isTransparentDisabled =
     format === "jpg" ||
     format === "pdf" ||
     format === "json" ||
-    format === "velvet";
+    format === "velvet" ||
+    isTemplate;
 
-  const isCompressDisabled = format === "json" || format === "velvet";
+  const isCompressDisabled =
+    format === "json" || format === "velvet" || isTemplate;
 
   const handleExport = async () => {
+    if (isTemplate && !templateName.trim()) {
+      alert("Please enter a template name");
+      return;
+    }
+
     setIsExporting(true);
 
-    // LOGIC: Automatically compress (minify) JSON/Velvet formats
-    // For other formats, use the switch value.
+    // Auto-compress JSON/Velvet/Template
     const shouldCompress =
-      format === "json" || format === "velvet"
+      format === "json" || format === "velvet" || isTemplate
         ? true
         : isCompressDisabled
         ? false
@@ -86,7 +107,15 @@ export function ExportDialog({ onExport, trigger }: ExportDialogProps) {
       format,
       transparent: isTransparentDisabled ? false : transparent,
       compress: shouldCompress,
+      templateMeta: isTemplate
+        ? {
+            id: templateName.toLowerCase().replace(/\s+/g, "-"),
+            name: templateName,
+            category,
+          }
+        : undefined,
     });
+
     setIsExporting(false);
     setOpen(false);
   };
@@ -94,13 +123,18 @@ export function ExportDialog({ onExport, trigger }: ExportDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(val) => !isExporting && setOpen(val)}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-106.25">
         <DialogHeader>
-          <DialogTitle>Export Design</DialogTitle>
+          <DialogTitle>
+            {isTemplate ? "Save as Template" : "Export Design"}
+          </DialogTitle>
           <DialogDescription>
-            Choose your preferred format and settings.
+            {isTemplate
+              ? "Save this design as a reusable template file."
+              : "Choose your preferred format and settings."}
           </DialogDescription>
         </DialogHeader>
+
         <div className="grid gap-6 py-4">
           {/* Format Selection */}
           <div className="grid grid-cols-4 items-center gap-4">
@@ -121,6 +155,12 @@ export function ExportDialog({ onExport, trigger }: ExportDialogProps) {
                 <SelectItem value="svg">SVG Vector</SelectItem>
                 <SelectItem value="pdf">PDF Document</SelectItem>
 
+                <SelectItem value="template">
+                  <div className="flex items-center gap-2 font-medium text-blue-600">
+                    <Save className="h-3.5 w-3.5" /> Save as Template
+                  </div>
+                </SelectItem>
+
                 {/* Premium Options */}
                 <SelectItem value="json" disabled>
                   <PremiumLabel label="JSON Data" />
@@ -132,55 +172,98 @@ export function ExportDialog({ onExport, trigger }: ExportDialogProps) {
             </Select>
           </div>
 
-          {/* Transparent Switch */}
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="transparent" className="text-right">
-              Transparent
-            </Label>
-            <div className="col-span-3 flex items-center space-x-2">
-              <Switch
-                id="transparent"
-                checked={isTransparentDisabled ? false : transparent}
-                onCheckedChange={setTransparent}
-                disabled={isTransparentDisabled}
-              />
-              <span className="text-xs text-muted-foreground">
-                {isTransparentDisabled
-                  ? "Not supported for this format"
-                  : "Remove background"}
-              </span>
-            </div>
-          </div>
+          {/* --- TEMPLATE FORM --- */}
+          {isTemplate ? (
+            <>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="t-name" className="text-right">
+                  Name
+                </Label>
+                <Input
+                  id="t-name"
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  className="col-span-3"
+                  placeholder="e.g., Summer Sale Post"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="t-cat" className="text-right">
+                  Category
+                </Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Social Media">Social Media</SelectItem>
+                    <SelectItem value="Business">Business</SelectItem>
+                    <SelectItem value="Print">Print</SelectItem>
+                    <SelectItem value="Presentation">Presentation</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          ) : (
+            /* --- STANDARD OPTIONS --- */
+            <>
+              {/* Transparent Switch */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="transparent" className="text-right">
+                  Transparent
+                </Label>
+                <div className="col-span-3 flex items-center space-x-2">
+                  <Switch
+                    id="transparent"
+                    checked={isTransparentDisabled ? false : transparent}
+                    onCheckedChange={setTransparent}
+                    disabled={isTransparentDisabled}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {isTransparentDisabled
+                      ? "Not supported"
+                      : "Remove background"}
+                  </span>
+                </div>
+              </div>
 
-          {/* Compress Switch */}
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="compress" className="text-right">
-              Compress
-            </Label>
-            <div className="col-span-3 flex items-center space-x-2">
-              <Switch
-                id="compress"
-                // Visual Logic: Force 'checked=false' if disabled so it looks "off"
-                checked={isCompressDisabled ? false : compress}
-                onCheckedChange={setCompress}
-                disabled={isCompressDisabled}
-              />
-              <span className="text-xs text-muted-foreground">
-                {isCompressDisabled
-                  ? "Auto-compressed" // Friendly indicator that it happens automatically
-                  : "Reduce file size"}
-              </span>
-            </div>
-          </div>
+              {/* Compress Switch */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="compress" className="text-right">
+                  Compress
+                </Label>
+                <div className="col-span-3 flex items-center space-x-2">
+                  <Switch
+                    id="compress"
+                    checked={isCompressDisabled ? false : compress}
+                    onCheckedChange={setCompress}
+                    disabled={isCompressDisabled}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {isCompressDisabled
+                      ? "Auto-compressed"
+                      : "Reduce file size"}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
+
         <DialogFooter>
           <Button type="submit" onClick={handleExport} disabled={isExporting}>
             {isExporting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : isTemplate ? (
+              <Save className="mr-2 h-4 w-4" />
             ) : (
               <Download className="mr-2 h-4 w-4" />
             )}
-            {isExporting ? "Processing..." : "Download"}
+            {isExporting
+              ? "Processing..."
+              : isTemplate
+              ? "Save Template"
+              : "Download"}
           </Button>
         </DialogFooter>
       </DialogContent>

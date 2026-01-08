@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ArrowRight, FileText, Upload, LayoutTemplate } from "lucide-react";
-import type { Orientation, PaperKey } from "@/pages/Home";
+import type { Orientation, PaperKey } from "@/lib/constants";
 import type { CanvasObject } from "@/lib/types";
 // CHANGED: Import PAPER_SIZES here to use the shared source of truth
 import { VELVET_KEY, PAPER_SIZES } from "@/lib/constants";
@@ -32,6 +32,7 @@ const PAPER_LABELS: Record<PaperKey, string> = {
   A2: "A2",
   Letter: "Letter",
   Tabloid: "Tabloid",
+  Mobile: "Mobile",
   Instagram: "Instagram",
   Twitter: "Twitter",
   FHD: "Full HD",

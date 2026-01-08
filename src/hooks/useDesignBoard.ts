@@ -5,8 +5,7 @@ import {
   useLayoutEffect,
   useCallback,
 } from "react";
-import { PAPER_SIZES } from "@/lib/constants";
-import type { Orientation, PaperKey } from "@/pages/Home";
+import { PAPER_SIZES, type Orientation, type PaperKey } from "@/lib/constants";
 import type {
   ToolType,
   CanvasObject,
