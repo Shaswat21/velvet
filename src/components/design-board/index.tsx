@@ -19,7 +19,8 @@ import {
   type PathObject,
   type TextObject,
 } from "@/lib/types";
-import { VELVET_KEY } from "@/lib/constants";
+import { ENABLE_DEV_MODE, VELVET_KEY } from "@/lib/constants";
+import { toast } from "sonner";
 
 // --- GIF WORKER ---
 const gifWorkerCode = `importScripts('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js');`;
@@ -455,6 +456,9 @@ export default function DesignBoard({
         setBgColor={board.setBgColor}
         handleAddText={board.handleAddText}
         handleAddImage={board.handleAddImage}
+        handleDevImageUpload={
+          ENABLE_DEV_MODE ? board.handleDevImageUpload : undefined
+        }
         handleDeleteSelected={board.handleDeleteSelected}
         selectedId={
           board.selectedIds.length === 1 ? board.selectedIds[0] : null

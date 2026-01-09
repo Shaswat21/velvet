@@ -9,14 +9,14 @@ import {
   Image as ImageIcon,
   Trash2,
   Square,
-  PenTool, // Import the Pen icon
+  PenTool,
   Group,
   Ungroup,
   Layers,
 } from "lucide-react";
 import { ColorPicker } from "./ui/ColorPicker";
 import type { ToolType } from "@/lib/types";
-import type { PaperKey, Orientation } from "@/pages/Home";
+import type { PaperKey, Orientation } from "@/lib/constants";
 
 interface HeaderProps {
   onBack: () => void;
@@ -28,6 +28,7 @@ interface HeaderProps {
   setBgColor: (c: string) => void;
   handleAddText: () => void;
   handleAddImage: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleDevImageUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void; // <--- NEW PROP
   handleDeleteSelected: () => void;
   selectedId: string | null;
   handleGroup?: () => void;
@@ -48,6 +49,7 @@ export const Header = ({
   setBgColor,
   handleAddText,
   handleAddImage,
+  handleDevImageUpload,
   handleDeleteSelected,
   selectedId,
   handleGroup,
@@ -58,9 +60,11 @@ export const Header = ({
   setIsLayersOpen,
 }: HeaderProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const devInputRef = useRef<HTMLInputElement>(null); // <--- Ref for hidden dev input
 
   return (
     <header className="grid grid-cols-3 items-center px-4 py-3 bg-white border-b shadow-sm z-30 h-16 relative">
+      {/* STANDARD USER INPUT */}
       <input
         type="file"
         ref={fileInputRef}
@@ -68,13 +72,22 @@ export const Header = ({
         accept="image/*"
         className="hidden"
       />
+
+      {/* HIDDEN DEV INPUT */}
+      <input
+        type="file"
+        ref={devInputRef}
+        onChange={handleDevImageUpload}
+        accept="image/*"
+        className="hidden"
+      />
+
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={onBack} title="Back">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <span className="h-6 w-px bg-gray-200"></span>
         <Tabs value={tool} onValueChange={(v) => setTool(v as ToolType)}>
-          {/* Updated grid to 4 columns for the new tool */}
           <TabsList className="grid w-48 grid-cols-4 h-9">
             <TabsTrigger value="select" className="h-7 p-0" title="Select">
               <MousePointer2 className="h-4 w-4" />
@@ -82,14 +95,9 @@ export const Header = ({
             <TabsTrigger value="hand" className="h-7 p-0" title="Pan Tool">
               <Hand className="h-4 w-4" />
             </TabsTrigger>
-            <TabsTrigger
-              value="rect"
-              className="h-7 p-0"
-              title="Rectangle"
-            >
+            <TabsTrigger value="rect" className="h-7 p-0" title="Rectangle">
               <Square className="h-4 w-4" />
             </TabsTrigger>
-            {/* Added Pen Tool Trigger */}
             <TabsTrigger value="pen" className="h-7 p-0" title="Pen">
               <PenTool className="h-4 w-4" />
             </TabsTrigger>
@@ -116,11 +124,20 @@ export const Header = ({
         >
           <Type className="h-3.5 w-3.5" /> Add Text
         </Button>
+
+        {/* ADD IMAGE BUTTON WITH DEV TRIGGER */}
         <Button
           variant="outline"
           size="sm"
           className="h-8 gap-2 px-3 text-xs"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => fileInputRef.current?.click()} // Left Click: Normal User
+          onContextMenu={(e) => {
+            e.preventDefault();
+            if (handleDevImageUpload) {
+              devInputRef.current?.click(); // Right Click: Dev Mode
+            }
+          }}
+          title="Left-click: Add Image | Right-click: Dev Upload (WebP)"
         >
           <ImageIcon className="h-3.5 w-3.5" /> Add Image
         </Button>
@@ -147,7 +164,6 @@ export const Header = ({
           </Button>
         )}
 
-        {/* LAYERS TOGGLE BUTTON */}
         <Button
           variant={isLayersOpen ? "secondary" : "ghost"}
           size="sm"

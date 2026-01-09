@@ -1,3 +1,5 @@
+export const ENABLE_DEV_MODE = true;
+
 export const VELVET_KEY = import.meta.env.VITE_VELVET_KEY || "default-dev-key";
 
 export type PaperKey =

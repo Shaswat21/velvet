@@ -19,6 +19,7 @@ import { calculateResize, calculateRotation } from "@/lib/utils/transformUtils";
 import { performGroup, performUngroup } from "@/lib/utils/groupingUtils";
 import { useHistory } from "./useHistory";
 import { useCanvasShortcuts } from "./useCanvasShortcuts";
+import { toast } from "sonner";
 
 const getRelativePos = (
   e: MouseEvent | React.MouseEvent,
@@ -262,30 +263,51 @@ export const useDesignBoard = (
   const handleAddImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = (event) => {
-      const src = event.target?.result as string;
+      const originalSrc = event.target?.result as string;
       const img = new Image();
-      img.src = src;
+      img.src = originalSrc;
+
       img.onload = () => {
+        // 1. Create an off-screen canvas
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        // 2. Draw the image onto the canvas
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0);
+
+        // 3. Convert to WebP (Quality 0.0 - 1.0)
+        // If the browser doesn't support WebP, it usually falls back to PNG
+        const webpSrc = canvas.toDataURL("image/webp", 0.8);
+
+        // 4. Calculate display dimensions (as per your original logic)
         const ratio = img.width / img.height;
         const w = 300;
         const h = 300 / ratio;
+
         const newId = Math.random().toString(36).substr(2, 9);
+
+        // 5. Create the object using the new 'webpSrc'
         const newImg: ImageObject = {
           id: newId,
           type: "image",
-          x: width / 2 - w / 2,
+          x: width / 2 - w / 2, // Ensure 'width' and 'height' variables exist in your scope
           y: height / 2 - h / 2,
           width: w,
           height: h,
           rotation: 0,
-          src,
+          src: webpSrc, // <--- Using the converted WebP source
           borderRadius: 0,
           opacity: 1,
           strokeColor: "transparent",
           strokeWidth: 0,
         };
+
         const finalObjects = [...localObjects, newImg];
         setObjects(finalObjects, true);
         setSelectedIds([newId]);
@@ -296,6 +318,82 @@ export const useDesignBoard = (
     e.target.value = "";
   };
 
+  // --- DEVELOPER ONLY: Convert -> Download -> Use Relative Path ---
+  const handleDevImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const originalSrc = event.target?.result as string;
+      const img = new Image();
+      img.src = originalSrc;
+
+      img.onload = () => {
+        // 1. Convert to WebP
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0);
+
+        const webpDataUrl = canvas.toDataURL("image/webp", 0.8);
+
+        // 2. Generate Path & Filename
+        const timestamp = Date.now();
+        const filename = `img_${timestamp}.webp`;
+        // Ensure this relative path matches your folder structure exactly
+        const relativePath = `/src/assets/templates/uploads/${filename}`;
+
+        // 3. Trigger Download
+        const link = document.createElement("a");
+        link.href = webpDataUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // 4. SHOW PERSISTENT TOAST (Waits for user action)
+        toast.info("File Downloaded", {
+          description: `Move "${filename}" to 'assets/templates/uploads/' then click Add.`,
+          duration: Infinity, // Keeps toast open until you click
+          action: {
+            label: "Add to Canvas",
+            onClick: () => {
+              // 5. This code runs ONLY when you click "Add to Canvas"
+              const ratio = img.width / img.height;
+              const w = 300;
+              const h = 300 / ratio;
+              const newId = Math.random().toString(36).substr(2, 9);
+
+              const newImg: ImageObject = {
+                id: newId,
+                type: "image",
+                x: width / 2 - w / 2,
+                y: height / 2 - h / 2,
+                width: w,
+                height: h,
+                rotation: 0,
+                src: relativePath,
+                borderRadius: 0,
+                opacity: 1,
+                strokeColor: "transparent",
+                strokeWidth: 0,
+              };
+
+              const finalObjects = [...objects, newImg];
+              setObjects(finalObjects, true);
+              setSelectedIds([newId]);
+              toast.success("Image added successfully");
+            },
+          },
+        });
+      };
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
   const handleDeleteSelected = () => {
     if (selectedIds.length > 0) {
       const finalObjects = localObjects.filter(
@@ -707,6 +805,7 @@ export const useDesignBoard = (
     handleStartRotation,
     handleAddText,
     handleAddImage,
+    handleDevImageUpload,
     updateObject,
     handleLayerSelect,
     handleFit,

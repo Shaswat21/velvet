@@ -8,6 +8,7 @@ interface TransformWrapperProps {
   isSelected: boolean;
   tool: ToolType;
   onMouseDown: (e: React.MouseEvent) => void;
+  onDoubleClick?: (e: React.MouseEvent) => void;
   setResizingTarget: (target: any) => void;
   setRotatingTarget: (e: React.MouseEvent, id: string) => void;
   hideResizeHandles?: boolean;
@@ -83,11 +84,7 @@ export const TransformWrapper = ({
         transformOrigin: "center center",
         pointerEvents: effectivePointerEvents,
         cursor:
-          tool !== "select"
-            ? "crosshair"
-            : obj.isLocked
-            ? "default"
-            : "move",
+          tool !== "select" ? "crosshair" : obj.isLocked ? "default" : "move",
       }}
       className="group"
     >

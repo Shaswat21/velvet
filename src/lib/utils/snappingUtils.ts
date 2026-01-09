@@ -41,9 +41,11 @@ export const calculateSnapping = (
     bottom: bounds.maxY,
   };
 
-  const MARGIN_PX = 50;
-  const MARGIN_PCT_W = canvasWidth * 0.1;
-  const MARGIN_PCT_H = canvasHeight * 0.1;
+  // --- UPDATE: Change 50px fixed margin to 5% of smaller side ---
+  const MARGIN_5_PCT = Math.min(canvasWidth, canvasHeight) * 0.05;
+
+  // --- EXISTING: 10% based on the SMALLER side ---
+  const MARGIN_10_PCT = Math.min(canvasWidth, canvasHeight) * 0.1;
 
   const activeGuides: GuideLine[] = [];
   let minSnapDistX = snapThreshold;
@@ -75,133 +77,134 @@ export const calculateSnapping = (
     return false;
   };
 
-  // --- 1. MARGIN SNAPS (50px) ---
-  const isNearMargin50Left = Math.abs(dEdges.left - MARGIN_PX) < snapThreshold;
-  const isNearMargin50Top = Math.abs(dEdges.top - MARGIN_PX) < snapThreshold;
-  const isNearMargin50Right =
-    Math.abs(dEdges.right - (canvasWidth - MARGIN_PX)) < snapThreshold;
-  const isNearMargin50Bottom =
-    Math.abs(dEdges.bottom - (canvasHeight - MARGIN_PX)) < snapThreshold;
+  // --- 1. MARGIN SNAPS (5% of Smaller Side) ---
+  const isNearMargin5Left =
+    Math.abs(dEdges.left - MARGIN_5_PCT) < snapThreshold;
+  const isNearMargin5Top = Math.abs(dEdges.top - MARGIN_5_PCT) < snapThreshold;
+  const isNearMargin5Right =
+    Math.abs(dEdges.right - (canvasWidth - MARGIN_5_PCT)) < snapThreshold;
+  const isNearMargin5Bottom =
+    Math.abs(dEdges.bottom - (canvasHeight - MARGIN_5_PCT)) < snapThreshold;
 
   if (
-    isNearMargin50Left ||
-    isNearMargin50Top ||
-    isNearMargin50Right ||
-    isNearMargin50Bottom
+    isNearMargin5Left ||
+    isNearMargin5Top ||
+    isNearMargin5Right ||
+    isNearMargin5Bottom
   ) {
     activeGuides.push(
       {
         type: "vertical",
-        x: MARGIN_PX,
-        y: MARGIN_PX,
-        length: canvasHeight - MARGIN_PX * 2,
+        x: MARGIN_5_PCT,
+        y: MARGIN_5_PCT,
+        length: canvasHeight - MARGIN_5_PCT * 2,
         isCenter: false,
       },
       {
         type: "vertical",
-        x: canvasWidth - MARGIN_PX,
-        y: MARGIN_PX,
-        length: canvasHeight - MARGIN_PX * 2,
+        x: canvasWidth - MARGIN_5_PCT,
+        y: MARGIN_5_PCT,
+        length: canvasHeight - MARGIN_5_PCT * 2,
         isCenter: false,
       },
       {
         type: "horizontal",
-        x: MARGIN_PX,
-        y: MARGIN_PX,
-        length: canvasWidth - MARGIN_PX * 2,
+        x: MARGIN_5_PCT,
+        y: MARGIN_5_PCT,
+        length: canvasWidth - MARGIN_5_PCT * 2,
         isCenter: false,
       },
       {
         type: "horizontal",
-        x: MARGIN_PX,
-        y: canvasHeight - MARGIN_PX,
-        length: canvasWidth - MARGIN_PX * 2,
+        x: MARGIN_5_PCT,
+        y: canvasHeight - MARGIN_5_PCT,
+        length: canvasWidth - MARGIN_5_PCT * 2,
         isCenter: false,
       }
     );
-    if (isNearMargin50Left) {
-      snapDx = MARGIN_PX - dEdges.left;
-      minSnapDistX = Math.abs(dEdges.left - MARGIN_PX);
+    if (isNearMargin5Left) {
+      snapDx = MARGIN_5_PCT - dEdges.left;
+      minSnapDistX = Math.abs(dEdges.left - MARGIN_5_PCT);
     }
-    if (isNearMargin50Right) {
-      snapDx = canvasWidth - MARGIN_PX - dEdges.right;
-      minSnapDistX = Math.abs(dEdges.right - (canvasWidth - MARGIN_PX));
+    if (isNearMargin5Right) {
+      snapDx = canvasWidth - MARGIN_5_PCT - dEdges.right;
+      minSnapDistX = Math.abs(dEdges.right - (canvasWidth - MARGIN_5_PCT));
     }
-    if (isNearMargin50Top) {
-      snapDy = MARGIN_PX - dEdges.top;
-      minSnapDistY = Math.abs(dEdges.top - MARGIN_PX);
+    if (isNearMargin5Top) {
+      snapDy = MARGIN_5_PCT - dEdges.top;
+      minSnapDistY = Math.abs(dEdges.top - MARGIN_5_PCT);
     }
-    if (isNearMargin50Bottom) {
-      snapDy = canvasHeight - MARGIN_PX - dEdges.bottom;
-      minSnapDistY = Math.abs(dEdges.bottom - (canvasHeight - MARGIN_PX));
+    if (isNearMargin5Bottom) {
+      snapDy = canvasHeight - MARGIN_5_PCT - dEdges.bottom;
+      minSnapDistY = Math.abs(dEdges.bottom - (canvasHeight - MARGIN_5_PCT));
     }
   }
 
-  // --- 2. MARGIN SNAPS (10%) ---
-  const isNear10Left = Math.abs(dEdges.left - MARGIN_PCT_W) < snapThreshold;
+  // --- 2. MARGIN SNAPS (10% of Smaller Side) ---
+  const isNear10Left = Math.abs(dEdges.left - MARGIN_10_PCT) < snapThreshold;
   const isNear10Right =
-    Math.abs(dEdges.right - (canvasWidth - MARGIN_PCT_W)) < snapThreshold;
-  const isNear10Top = Math.abs(dEdges.top - MARGIN_PCT_H) < snapThreshold;
+    Math.abs(dEdges.right - (canvasWidth - MARGIN_10_PCT)) < snapThreshold;
+  const isNear10Top = Math.abs(dEdges.top - MARGIN_10_PCT) < snapThreshold;
   const isNear10Bottom =
-    Math.abs(dEdges.bottom - (canvasHeight - MARGIN_PCT_H)) < snapThreshold;
+    Math.abs(dEdges.bottom - (canvasHeight - MARGIN_10_PCT)) < snapThreshold;
 
   if (isNear10Left || isNear10Right || isNear10Top || isNear10Bottom) {
     activeGuides.push(
       {
         type: "vertical",
-        x: MARGIN_PCT_W,
-        y: MARGIN_PCT_H,
-        length: canvasHeight - MARGIN_PCT_H * 2,
+        x: MARGIN_10_PCT,
+        y: MARGIN_10_PCT,
+        length: canvasHeight - MARGIN_10_PCT * 2,
         isCenter: false,
       },
       {
         type: "vertical",
-        x: canvasWidth - MARGIN_PCT_W,
-        y: MARGIN_PCT_H,
-        length: canvasHeight - MARGIN_PCT_H * 2,
+        x: canvasWidth - MARGIN_10_PCT,
+        y: MARGIN_10_PCT,
+        length: canvasHeight - MARGIN_10_PCT * 2,
         isCenter: false,
       },
       {
         type: "horizontal",
-        x: MARGIN_PCT_W,
-        y: MARGIN_PCT_H,
-        length: canvasWidth - MARGIN_PCT_W * 2,
+        x: MARGIN_10_PCT,
+        y: MARGIN_10_PCT,
+        length: canvasWidth - MARGIN_10_PCT * 2,
         isCenter: false,
       },
       {
         type: "horizontal",
-        x: MARGIN_PCT_W,
-        y: canvasHeight - MARGIN_PCT_H,
-        length: canvasWidth - MARGIN_PCT_W * 2,
+        x: MARGIN_10_PCT,
+        y: canvasHeight - MARGIN_10_PCT,
+        length: canvasWidth - MARGIN_10_PCT * 2,
         isCenter: false,
       }
     );
 
     if (isNear10Left) {
-      const dist = Math.abs(dEdges.left - MARGIN_PCT_W);
+      const dist = Math.abs(dEdges.left - MARGIN_10_PCT);
       if (dist < minSnapDistX) {
-        snapDx = MARGIN_PCT_W - dEdges.left;
+        snapDx = MARGIN_10_PCT - dEdges.left;
         minSnapDistX = dist;
       }
     }
     if (isNear10Right) {
-      const dist = Math.abs(dEdges.right - (canvasWidth - MARGIN_PCT_W));
+      const dist = Math.abs(dEdges.right - (canvasWidth - MARGIN_10_PCT));
       if (dist < minSnapDistX) {
-        snapDx = canvasWidth - MARGIN_PCT_W - dEdges.right;
+        snapDx = canvasWidth - MARGIN_10_PCT - dEdges.right;
         minSnapDistX = dist;
       }
     }
     if (isNear10Top) {
-      const dist = Math.abs(dEdges.top - MARGIN_PCT_H);
+      const dist = Math.abs(dEdges.top - MARGIN_10_PCT);
       if (dist < minSnapDistY) {
-        snapDy = MARGIN_PCT_H - dEdges.top;
+        snapDy = MARGIN_10_PCT - dEdges.top;
         minSnapDistY = dist;
       }
     }
     if (isNear10Bottom) {
-      const dist = Math.abs(dEdges.bottom - (canvasHeight - MARGIN_PCT_H));
+      const dist = Math.abs(dEdges.bottom - (canvasHeight - MARGIN_10_PCT));
       if (dist < minSnapDistY) {
-        snapDy = canvasHeight - MARGIN_PCT_H - dEdges.bottom;
+        snapDy = canvasHeight - MARGIN_10_PCT - dEdges.bottom;
         minSnapDistY = dist;
       }
     }

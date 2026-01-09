@@ -12,7 +12,8 @@ export const generateSVGString = (
   height: number,
   bgColor: string
 ): string => {
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">`;
+  // 1. Added xmlns:xlink for better image compatibility
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="100%" height="100%" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">`;
 
   // Background
   if (bgColor && bgColor !== "transparent") {
@@ -38,10 +39,10 @@ export const generateSVGString = (
       content = `<path d="${d}" fill="none" stroke="${o.strokeColor}" stroke-width="${o.strokeWidth}" stroke-linecap="round" stroke-linejoin="round" opacity="${o.opacity}" />`;
     } else if (obj.type === "image") {
       const o = obj as ImageObject;
-      content = `<image href="${o.src}" width="${o.width}" height="${o.height}" preserveAspectRatio="none" />`;
+      // 2. Added xlink:href alongside href
+      content = `<image xlink:href="${o.src}" href="${o.src}" width="${o.width}" height="${o.height}" preserveAspectRatio="none" />`;
     } else if (obj.type === "text") {
       const o = obj as TextObject;
-      // Using foreignObject for accurate text rendering including wrapping/alignment
       content = `
         <foreignObject width="${o.width}" height="${
         o.height
