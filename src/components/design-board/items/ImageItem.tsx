@@ -70,7 +70,7 @@ export const ImageItem = ({
   const handleDoubleClick = (e: React.MouseEvent) => {
     if (!props.isSelected) return;
     e.stopPropagation();
-    setIsEditing(true);
+    !obj.isLocked ? setIsEditing(true) : setIsEditing(false);
     props.setDragTarget(null); // Disable parent drag
   };
 
@@ -240,8 +240,8 @@ export const ImageItem = ({
         </div>
 
         {/* 3. Slider Controls */}
-        {isEditing && (
-          <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 z-[60] w-48 image-edit-controls">
+        {!obj.isLocked && isEditing && (
+          <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 z-60 w-48 image-edit-controls">
             <div
               className="bg-white rounded-md shadow-xl border p-3"
               onMouseDown={(e) => e.stopPropagation()}

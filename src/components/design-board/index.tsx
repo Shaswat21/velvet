@@ -21,6 +21,7 @@ import {
 } from "@/lib/types";
 import { ENABLE_DEV_MODE, VELVET_KEY } from "@/lib/constants";
 import { toast } from "sonner";
+import { generateSVGString } from "@/lib/render";
 
 // --- GIF WORKER ---
 const gifWorkerCode = `importScripts('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js');`;
@@ -28,80 +29,6 @@ const workerBlob = new Blob([gifWorkerCode], {
   type: "application/javascript",
 });
 const workerUrl = URL.createObjectURL(workerBlob);
-
-// --- SVG GENERATOR ---
-const generateSVGString = (
-  objects: CanvasObject[],
-  width: number,
-  height: number,
-  bgColor: string
-): string => {
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
-
-  if (bgColor && bgColor !== "transparent") {
-    svg += `<rect width="100%" height="100%" fill="${bgColor}" />`;
-  }
-
-  const renderObject = (obj: CanvasObject): string => {
-    const transform = `translate(${obj.x}, ${obj.y}) rotate(${obj.rotation}, ${
-      obj.width / 2
-    }, ${obj.height / 2})`;
-
-    let content = "";
-
-    if (obj.type === "rect") {
-      const o = obj as RectObject;
-      content = `<rect width="${o.width}" height="${o.height}" fill="${o.fillColor}" stroke="${o.strokeColor}" stroke-width="${o.strokeWidth}" rx="${o.borderRadius}" />`;
-    } else if (obj.type === "path") {
-      const o = obj as PathObject;
-      const d = o.points
-        .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
-        .join(" ");
-      content = `<path d="${d}" fill="none" stroke="${o.strokeColor}" stroke-width="${o.strokeWidth}" stroke-linecap="round" stroke-linejoin="round" opacity="${o.opacity}" />`;
-    } else if (obj.type === "image") {
-      const o = obj as ImageObject;
-      content = `<image href="${o.src}" width="${o.width}" height="${o.height}" preserveAspectRatio="none" />`;
-    } else if (obj.type === "text") {
-      const o = obj as TextObject;
-      content = `
-        <foreignObject width="${o.width}" height="${
-        o.height
-      }" style="overflow: visible;">
-            <div xmlns="http://www.w3.org/1999/xhtml" style="
-                width: 100%; 
-                height: 100%; 
-                font-family: ${o.fontFamily}; 
-                font-size: ${o.fontSize}px; 
-                color: ${o.color}; 
-                text-align: ${o.textAlign};
-                font-weight: ${o.isBold ? "bold" : "normal"};
-                font-style: ${o.isItalic ? "italic" : "normal"};
-                text-decoration: ${o.isUnderline ? "underline" : ""} ${
-        o.isStrikethrough ? "line-through" : ""
-      };
-                line-height: ${o.lineHeight};
-                letter-spacing: ${o.letterSpacing}px;
-                word-wrap: break-word;
-                display: flex;
-                align-items: center; 
-            ">
-                ${o.text}
-            </div>
-        </foreignObject>`;
-    } else if (obj.type === "group") {
-      const o = obj as any;
-      if (o.objects) {
-        content = o.objects.map((child: any) => renderObject(child)).join("");
-      }
-    }
-
-    return `<g transform="${transform}">${content}</g>`;
-  };
-
-  svg += objects.map(renderObject).join("");
-  svg += `</svg>`;
-  return svg;
-};
 
 // --- GIF PARSING UTILS ---
 interface Frame {
@@ -217,12 +144,15 @@ export default function DesignBoard({
 
     // --- 1. VELVET EXPORT (ENCRYPTED) ---
     if (format === "velvet" || format === "template") {
+      const { name, category, ...rest } = options.templateMeta || {};
       const data = {
-        ...(format == "template" ? options.templateMeta : {}),
         objects: board.objects,
         paper,
         orientation,
         bgColor: board.bgColor,
+        category: format === "template" ? category : "Custom",
+        name: format === "template" ? name : "Custom Design",
+        ...(format === "template" ? rest : {}),
       };
       const jsonString = JSON.stringify(data, null, 2);
 

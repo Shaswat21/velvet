@@ -542,7 +542,8 @@ export const useDesignBoard = (
         isCrop,
         metaData,
         startImgX,
-        startImgY, // Destructure initial crop offsets
+        startImgY,
+        startFontSize,
       } = resizingTarget;
 
       const deltaX = (e.pageX - startX) / currentZoom;
@@ -650,6 +651,32 @@ export const useDesignBoard = (
         return;
       }
 
+      const mouseX = e.pageX;
+      const mouseY = e.pageY;
+      const dxWorld = (mouseX - resizingTarget.startX) / currentZoom;
+      const dyWorld = (mouseY - resizingTarget.startY) / currentZoom;
+      const angleRad = (obj.rotation * Math.PI) / 180;
+      const cos = Math.cos(-angleRad);
+      const sin = Math.sin(-angleRad);
+      const dxLocal = dxWorld * cos - dyWorld * sin;
+      const dyLocal = dxWorld * sin + dyWorld * cos;
+      let newWidth = startW;
+      let newHeight = startH;
+      if (direction.includes("e")) newWidth = Math.max(10, startW + dxLocal);
+      else if (direction.includes("w"))
+        newWidth = Math.max(10, startW - dxLocal);
+      if (direction.includes("s")) newHeight = Math.max(10, startH + dyLocal);
+      else if (direction.includes("n"))
+        newHeight = Math.max(10, startH - dyLocal);
+
+      let fontSizeUpdate = {};
+      if (obj.type === "text" && direction.length === 2) {
+        const scale = newWidth / startW;
+        newHeight = startH * scale;
+        if (startFontSize)
+          fontSizeUpdate = { fontSize: Math.max(1, startFontSize * scale) };
+      }
+
       // --- 3. Standard Resize (Non-Crop) ---
       // Apply Aspect Lock
       if (lockAspectRatio && !isCrop) {
@@ -673,6 +700,16 @@ export const useDesignBoard = (
       if (newH < 10) {
         newH = 10;
         if (direction.includes("n")) newY = startYPos + startH - 10;
+      }
+
+      if (obj.type === "text") {
+        updateObject(resizingTarget.id, {
+          x: newX,
+          y: newY,
+          width: newW,
+          ...fontSizeUpdate,
+        });
+        return;
       }
 
       updateObject(resizingTarget.id, {

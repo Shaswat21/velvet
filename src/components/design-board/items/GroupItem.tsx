@@ -39,9 +39,10 @@ export const GroupItem = ({ obj, innerRef, ...props }: GroupItemProps) => {
     <TransformWrapper
       obj={obj}
       {...props}
-      hideResizeHandles={true}
+      hideResizeHandles={false}
       pointerEvents="auto"
       onMouseDown={handleGroupInteraction}
+      lockAspectRatio={true}
     >
       {/* NEW: Clipping Container */}
       {/* This ensures the internal scaled div never captures clicks outside the bounding box */}
@@ -80,7 +81,13 @@ export const GroupItem = ({ obj, innerRef, ...props }: GroupItemProps) => {
             if (child.type === "rect")
               return <RectItem obj={child} {...commonProps} />;
             if (child.type === "image")
-              return <ImageItem obj={child} {...commonProps} />;
+              return (
+                <ImageItem
+                  obj={child}
+                  {...commonProps}
+                  updateObject={() => {}}
+                />
+              );
             return null;
           })}
         </div>

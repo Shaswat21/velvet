@@ -38,11 +38,54 @@ export const PAPER_SIZES: Record<PaperKey, { w: number; h: number }> = {
 
 export const ZOOM_PRESETS = [300, 200, 150, 100, 75, 50, 25, 10];
 export const FONTS = [
-  "Inter",
+  "Allura", // Stylish Script
+  "Amatic SC", // Handwritten
   "Arial",
-  "Times New Roman",
+  "Bodoni Moda", // High-fashion Serif
+  "Bookman",
+  "Brush Script MT",
+  "Caveat", // Handwritten
+  "Cinzel", // Elegant/Roman
+  "Comic Sans MS",
+  "Consolas",
+  "Copperplate",
+  "Cormorant Garamond", // Elegant Serif
+  "Courier",
   "Courier New",
+  "Dancing Script", // Casual Script
+  "Fira Code",
+  "Garamond",
   "Georgia",
+  "Gill Sans",
+  "Great Vibes", // Formal Script
+  "Helvetica",
+  "Impact",
+  "Inter",
+  "Lato",
+  "Lora",
+  "Lucida Console",
+  "Lucida Handwriting",
+  "Menlo",
+  "Merriweather",
+  "Monaco",
+  "Montserrat",
+  "Nunito", // Rounded Sans
+  "Open Sans",
+  "Pacifico", // Retro Script
+  "Palatino",
+  "Papyrus",
+  "Pinyon Script", // Romantic Script
+  "Playfair Display",
+  "Poppins",
+  "Quicksand", // Rounded
+  "Raleway", // Elegant Sans
+  "Roboto",
+  "Sacramento", // Monoline Script
+  "Satisfy", // Brush Script
+  "Tahoma",
+  "Times New Roman",
+  "Trebuchet MS",
+  "Verdana",
 ];
 export const PRESET_COLORS = [
   "transparent",

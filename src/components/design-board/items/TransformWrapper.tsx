@@ -51,25 +51,23 @@ export const TransformWrapper = ({
     e.stopPropagation();
     const isCorner = direction.length === 2; // e.g. "nw", "se"
 
-    // --- LOGIC DETERMINATION ---
-    // 1. If Editing (Crop Mode): Always Crop, Never Lock Ratio.
-    // 2. If Not Editing:
-    //    - Corner: Scale Box & Image Together (Not Crop). Lock Ratio.
-    //    - Side: Resize Box Only (Crop). Unlock Ratio.
+    const shouldLockRatio = obj.type === "text" && isCorner;
 
     let finalIsCrop = false;
-    let finalLockAspectRatio = false;
+    let finalLockAspectRatio = lockAspectRatio;
 
-    if (isEditing) {
-      finalIsCrop = true;
-      finalLockAspectRatio = false;
-    } else {
-      if (isCorner) {
-        finalIsCrop = false;
-        finalLockAspectRatio = true; // Enforce aspect ratio scaling
-      } else {
-        finalIsCrop = true; // Side handles trigger "Stationary Crop"
+    if (obj.type === "image") {
+      if (isEditing) {
+        finalIsCrop = true;
         finalLockAspectRatio = false;
+      } else {
+        if (isCorner) {
+          finalIsCrop = false;
+          finalLockAspectRatio = true; // Enforce aspect ratio scaling
+        } else {
+          finalIsCrop = true; // Side handles trigger "Stationary Crop"
+          finalLockAspectRatio = false;
+        }
       }
     }
 
@@ -85,7 +83,8 @@ export const TransformWrapper = ({
       startImgX: (obj as any).imageX ?? 0,
       startImgY: (obj as any).imageY ?? 0,
       direction,
-      lockAspectRatio: finalLockAspectRatio,
+      lockAspectRatio:
+        !(obj.type == "text") ? finalLockAspectRatio : shouldLockRatio,
       isCrop: finalIsCrop,
       metaData,
     });
@@ -177,23 +176,27 @@ export const TransformWrapper = ({
                     )}`}
                     onMouseDown={(e) => handleResizeStart(e, "e")}
                   />
-                  <div
-                    className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-2 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
-                      0
-                    )}`}
-                    onMouseDown={(e) => handleResizeStart(e, "n")}
-                  />
-                  <div
-                    className={`absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-4 h-2 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
-                      180
-                    )}`}
-                    onMouseDown={(e) => handleResizeStart(e, "s")}
-                  />
+                  {!(obj.type === "text") && (
+                    <>
+                      <div
+                        className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-2 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
+                          0
+                        )}`}
+                        onMouseDown={(e) => handleResizeStart(e, "n")}
+                      />
+                      <div
+                        className={`absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-4 h-2 bg-white border border-blue-500 rounded-sm pointer-events-auto shadow-sm z-50 ${getCursor(
+                          180
+                        )}`}
+                        onMouseDown={(e) => handleResizeStart(e, "s")}
+                      />
+                    </>
+                  )}
                 </>
               )}
 
               {/* --- CROP HANDLES (Thick Bars) --- */}
-              {isEditing && (
+              {!obj.isLocked && isEditing && (
                 <>
                   {/* Corners */}
                   <div

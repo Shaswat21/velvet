@@ -187,22 +187,24 @@ export function ExportDialog({ onExport, trigger }: ExportDialogProps) {
                   placeholder="e.g., Summer Sale Post"
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="t-cat" className="text-right">
-                  Category
-                </Label>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Social Media">Social Media</SelectItem>
-                    <SelectItem value="Business">Business</SelectItem>
-                    <SelectItem value="Print">Print</SelectItem>
-                    <SelectItem value="Presentation">Presentation</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {format === "template" && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="t-cat" className="text-right">
+                    Category
+                  </Label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Social Media">Social Media</SelectItem>
+                      <SelectItem value="Business">Business</SelectItem>
+                      <SelectItem value="Print">Print</SelectItem>
+                      <SelectItem value="Presentation">Presentation</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </>
           ) : (
             /* --- STANDARD OPTIONS --- */
