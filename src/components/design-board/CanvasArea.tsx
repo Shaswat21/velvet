@@ -217,7 +217,12 @@ export const CanvasArea = ({
                     return <RectItem obj={obj} key={obj.id} {...commonProps} />;
                   if (obj.type === "image")
                     return (
-                      <ImageItem obj={obj} key={obj.id} {...commonProps} />
+                      <ImageItem
+                        obj={obj}
+                        key={obj.id}
+                        updateObject={updateObject}
+                        {...commonProps}
+                      />
                     );
                   if (obj.type === "group")
                     return (

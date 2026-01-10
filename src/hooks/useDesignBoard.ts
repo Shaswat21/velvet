@@ -510,19 +510,177 @@ export const useDesignBoard = (
       return;
     }
     // 5. Resize
+    // if (resizingTarget) {
+    //   e.preventDefault();
+    //   const obj = localObjects.find((o) => o.id === resizingTarget.id);
+    //   if (!obj || obj.isLocked) return;
+
+    //   const newDimensions = calculateResize(
+    //     obj,
+    //     e.pageX,
+    //     e.pageY,
+    //     resizingTarget,
+    //     currentZoom
+    //   );
+    //   updateObject(resizingTarget.id, newDimensions);
+    //   return;
+    // }
     if (resizingTarget) {
       e.preventDefault();
       const obj = localObjects.find((o) => o.id === resizingTarget.id);
       if (!obj || obj.isLocked) return;
 
-      const newDimensions = calculateResize(
-        obj,
-        e.pageX,
-        e.pageY,
-        resizingTarget,
-        currentZoom
-      );
-      updateObject(resizingTarget.id, newDimensions);
+      const {
+        startX,
+        startY,
+        startW,
+        startH,
+        startXPos,
+        startYPos,
+        direction,
+        lockAspectRatio,
+        isCrop,
+        metaData,
+        startImgX,
+        startImgY, // Destructure initial crop offsets
+      } = resizingTarget;
+
+      const deltaX = (e.pageX - startX) / currentZoom;
+      const deltaY = (e.pageY - startY) / currentZoom;
+
+      let newX = startXPos;
+      let newY = startYPos;
+      let newW = startW;
+      let newH = startH;
+
+      // --- 1. Calculate Proposed Wrapper Dimensions ---
+      if (direction.includes("e")) newW = startW + deltaX;
+      else if (direction.includes("w")) {
+        newW = startW - deltaX;
+        newX = startXPos + deltaX;
+      }
+      if (direction.includes("s")) newH = startH + deltaY;
+      else if (direction.includes("n")) {
+        newH = startH - deltaY;
+        newY = startYPos + deltaY;
+      }
+
+      // --- 2. STATIONARY CROP LOGIC ---
+      if (isCrop && obj.type === "image" && metaData) {
+        const baseW = metaData.width || startW;
+        const baseH = metaData.height || startH;
+
+        // A. Calculate the FIXED World Center of the Image
+        // WrapperCenter + (Offset% * BaseSize) = ImageCenter
+        const startWrapperCx = startXPos + startW / 2;
+        const startWrapperCy = startYPos + startH / 2;
+
+        const fixedImageWorldCx = startWrapperCx + startImgX * baseW;
+        const fixedImageWorldCy = startWrapperCy + startImgY * baseH;
+
+        // B. Calculate Image World Boundaries (The hard limits for the wrapper)
+        const imgWorldLeft = fixedImageWorldCx - baseW / 2;
+        const imgWorldRight = fixedImageWorldCx + baseW / 2;
+        const imgWorldTop = fixedImageWorldCy - baseH / 2;
+        const imgWorldBottom = fixedImageWorldCy + baseH / 2;
+
+        // C. Apply Constraints (Clamp Wrapper edges to Image edges)
+        // Min size check (10px) happens implicitly via clamps if logic is sound,
+        // but explicit 10px check is safer.
+
+        if (direction.includes("w")) {
+          // Dragging Left Edge: Cannot go left of ImageLeft
+          if (newX < imgWorldLeft) {
+            newX = imgWorldLeft;
+            newW = startXPos + startW - newX; // Recalculate width based on clamped X
+          }
+          // Max width constraint (cannot drag left past right edge - minSize)
+          if (newW < 10) {
+            newW = 10;
+            newX = startXPos + startW - 10;
+          }
+        }
+
+        if (direction.includes("e")) {
+          // Dragging Right Edge: Cannot go right of ImageRight
+          if (newX + newW > imgWorldRight) {
+            newW = imgWorldRight - newX;
+          }
+          if (newW < 10) newW = 10;
+        }
+
+        if (direction.includes("n")) {
+          // Dragging Top Edge
+          if (newY < imgWorldTop) {
+            newY = imgWorldTop;
+            newH = startYPos + startH - newY;
+          }
+          if (newH < 10) {
+            newH = 10;
+            newY = startYPos + startH - 10;
+          }
+        }
+
+        if (direction.includes("s")) {
+          // Dragging Bottom Edge
+          if (newY + newH > imgWorldBottom) {
+            newH = imgWorldBottom - newY;
+          }
+          if (newH < 10) newH = 10;
+        }
+
+        // D. Back-Calculate New Internal Offsets to maintain Stationary Position
+        // We know: NewWrapperCx + (NewOffset * BaseW) = FixedImageWorldCx
+        // So: NewOffset = (FixedImageWorldCx - NewWrapperCx) / BaseW
+
+        const newWrapperCx = newX + newW / 2;
+        const newWrapperCy = newY + newH / 2;
+
+        const newImgX = (fixedImageWorldCx - newWrapperCx) / baseW;
+        const newImgY = (fixedImageWorldCy - newWrapperCy) / baseH;
+
+        updateObject(resizingTarget.id, {
+          x: newX,
+          y: newY,
+          width: newW,
+          height: newH,
+          imageX: newImgX,
+          imageY: newImgY,
+        });
+        return;
+      }
+
+      // --- 3. Standard Resize (Non-Crop) ---
+      // Apply Aspect Lock
+      if (lockAspectRatio && !isCrop) {
+        const aspectRatio = startW / startH;
+        if (direction.includes("e") || direction.includes("w")) {
+          const targetH = newW / aspectRatio;
+          if (direction.includes("n")) newY = startYPos + (startH - targetH);
+          newH = targetH;
+        } else {
+          const targetW = newH * aspectRatio;
+          if (direction.includes("w")) newX = startXPos + (startW - targetW);
+          newW = targetW;
+        }
+      }
+
+      // Standard Min Size
+      if (newW < 10) {
+        newW = 10;
+        if (direction.includes("w")) newX = startXPos + startW - 10;
+      }
+      if (newH < 10) {
+        newH = 10;
+        if (direction.includes("n")) newY = startYPos + startH - 10;
+      }
+
+      updateObject(resizingTarget.id, {
+        x: newX,
+        y: newY,
+        width: newW,
+        height: newH,
+      });
       return;
     }
 
