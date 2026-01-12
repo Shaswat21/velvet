@@ -23,13 +23,24 @@ export const calculateSnapping = (
   canvasWidth: number,
   canvasHeight: number,
   selectedIds: string[],
-  snapThreshold: number = 5
+  snapThreshold: number = 5,
+  newWidth?: number,
+  newHeight?: number,
+  // --- NEW PARAMETER: Active Handle (e.g., "n", "se", "w") ---
+  activeHandle: string | null = null
 ): SnappingResult => {
-  const wObj = draggedObj.width;
-  const hObj = draggedObj.height;
+  const wObj = newWidth ?? draggedObj.width;
+  const hObj = newHeight ?? draggedObj.height;
 
-  // Create a temporary object to calculate the NEW bounding box
-  const tempObj = { ...draggedObj, x: newX, y: newY };
+  // Create temporary object to calculate geometry
+  const tempObj = {
+    ...draggedObj,
+    x: newX,
+    y: newY,
+    width: wObj,
+    height: hObj,
+  };
+
   const bounds = getRotatedBoundingBox(tempObj);
 
   const dEdges = {
@@ -41,10 +52,22 @@ export const calculateSnapping = (
     bottom: bounds.maxY,
   };
 
-  // --- UPDATE: Change 50px fixed margin to 5% of smaller side ---
-  const MARGIN_5_PCT = Math.min(canvasWidth, canvasHeight) * 0.05;
+  // --- DETERMINE ACTIVE EDGES ---
+  // If activeHandle is null, we are moving -> Check ALL edges.
+  // If activeHandle exists, only check edges relevant to that handle.
+  const isMoving = !activeHandle;
 
-  // --- EXISTING: 10% based on the SMALLER side ---
+  const checkLeft = isMoving || activeHandle?.includes("w");
+  const checkRight = isMoving || activeHandle?.includes("e");
+  const checkTop = isMoving || activeHandle?.includes("n");
+  const checkBottom = isMoving || activeHandle?.includes("s");
+
+  // Only check centers if moving (prevents resizing jumps)
+  const checkCenterX = isMoving;
+  const checkCenterY = isMoving;
+
+  // Margins
+  const MARGIN_5_PCT = Math.min(canvasWidth, canvasHeight) * 0.05;
   const MARGIN_10_PCT = Math.min(canvasWidth, canvasHeight) * 0.1;
 
   const activeGuides: GuideLine[] = [];
@@ -77,135 +100,132 @@ export const calculateSnapping = (
     return false;
   };
 
-  // --- 1. MARGIN SNAPS (5% of Smaller Side) ---
-  const isNearMargin5Left =
-    Math.abs(dEdges.left - MARGIN_5_PCT) < snapThreshold;
-  const isNearMargin5Top = Math.abs(dEdges.top - MARGIN_5_PCT) < snapThreshold;
-  const isNearMargin5Right =
-    Math.abs(dEdges.right - (canvasWidth - MARGIN_5_PCT)) < snapThreshold;
-  const isNearMargin5Bottom =
-    Math.abs(dEdges.bottom - (canvasHeight - MARGIN_5_PCT)) < snapThreshold;
+  // --- 1. MARGIN SNAPS ---
 
-  if (
-    isNearMargin5Left ||
-    isNearMargin5Top ||
-    isNearMargin5Right ||
-    isNearMargin5Bottom
-  ) {
-    activeGuides.push(
-      {
-        type: "vertical",
-        x: MARGIN_5_PCT,
-        y: MARGIN_5_PCT,
-        length: canvasHeight - MARGIN_5_PCT * 2,
-        isCenter: false,
-      },
-      {
-        type: "vertical",
-        x: canvasWidth - MARGIN_5_PCT,
-        y: MARGIN_5_PCT,
-        length: canvasHeight - MARGIN_5_PCT * 2,
-        isCenter: false,
-      },
-      {
-        type: "horizontal",
-        x: MARGIN_5_PCT,
-        y: MARGIN_5_PCT,
-        length: canvasWidth - MARGIN_5_PCT * 2,
-        isCenter: false,
-      },
-      {
-        type: "horizontal",
-        x: MARGIN_5_PCT,
-        y: canvasHeight - MARGIN_5_PCT,
-        length: canvasWidth - MARGIN_5_PCT * 2,
-        isCenter: false,
+  // LEFT MARGINS
+  if (checkLeft) {
+    if (Math.abs(dEdges.left - MARGIN_5_PCT) < snapThreshold) {
+      if (checkAlign(dEdges.left, MARGIN_5_PCT, false, "vertical")) {
+        activeGuides.push({
+          type: "vertical",
+          x: MARGIN_5_PCT,
+          y: 0,
+          length: canvasHeight,
+          isCenter: false,
+        });
       }
-    );
-    if (isNearMargin5Left) {
-      snapDx = MARGIN_5_PCT - dEdges.left;
-      minSnapDistX = Math.abs(dEdges.left - MARGIN_5_PCT);
     }
-    if (isNearMargin5Right) {
-      snapDx = canvasWidth - MARGIN_5_PCT - dEdges.right;
-      minSnapDistX = Math.abs(dEdges.right - (canvasWidth - MARGIN_5_PCT));
-    }
-    if (isNearMargin5Top) {
-      snapDy = MARGIN_5_PCT - dEdges.top;
-      minSnapDistY = Math.abs(dEdges.top - MARGIN_5_PCT);
-    }
-    if (isNearMargin5Bottom) {
-      snapDy = canvasHeight - MARGIN_5_PCT - dEdges.bottom;
-      minSnapDistY = Math.abs(dEdges.bottom - (canvasHeight - MARGIN_5_PCT));
+    if (Math.abs(dEdges.left - MARGIN_10_PCT) < snapThreshold) {
+      if (checkAlign(dEdges.left, MARGIN_10_PCT, false, "vertical")) {
+        activeGuides.push({
+          type: "vertical",
+          x: MARGIN_10_PCT,
+          y: 0,
+          length: canvasHeight,
+          isCenter: false,
+        });
+      }
     }
   }
 
-  // --- 2. MARGIN SNAPS (10% of Smaller Side) ---
-  const isNear10Left = Math.abs(dEdges.left - MARGIN_10_PCT) < snapThreshold;
-  const isNear10Right =
-    Math.abs(dEdges.right - (canvasWidth - MARGIN_10_PCT)) < snapThreshold;
-  const isNear10Top = Math.abs(dEdges.top - MARGIN_10_PCT) < snapThreshold;
-  const isNear10Bottom =
-    Math.abs(dEdges.bottom - (canvasHeight - MARGIN_10_PCT)) < snapThreshold;
+  // RIGHT MARGINS
+  if (checkRight) {
+    if (Math.abs(dEdges.right - (canvasWidth - MARGIN_5_PCT)) < snapThreshold) {
+      if (
+        checkAlign(dEdges.right, canvasWidth - MARGIN_5_PCT, false, "vertical")
+      ) {
+        activeGuides.push({
+          type: "vertical",
+          x: canvasWidth - MARGIN_5_PCT,
+          y: 0,
+          length: canvasHeight,
+          isCenter: false,
+        });
+      }
+    }
+    if (
+      Math.abs(dEdges.right - (canvasWidth - MARGIN_10_PCT)) < snapThreshold
+    ) {
+      if (
+        checkAlign(dEdges.right, canvasWidth - MARGIN_10_PCT, false, "vertical")
+      ) {
+        activeGuides.push({
+          type: "vertical",
+          x: canvasWidth - MARGIN_10_PCT,
+          y: 0,
+          length: canvasHeight,
+          isCenter: false,
+        });
+      }
+    }
+  }
 
-  if (isNear10Left || isNear10Right || isNear10Top || isNear10Bottom) {
-    activeGuides.push(
-      {
-        type: "vertical",
-        x: MARGIN_10_PCT,
-        y: MARGIN_10_PCT,
-        length: canvasHeight - MARGIN_10_PCT * 2,
-        isCenter: false,
-      },
-      {
-        type: "vertical",
-        x: canvasWidth - MARGIN_10_PCT,
-        y: MARGIN_10_PCT,
-        length: canvasHeight - MARGIN_10_PCT * 2,
-        isCenter: false,
-      },
-      {
-        type: "horizontal",
-        x: MARGIN_10_PCT,
-        y: MARGIN_10_PCT,
-        length: canvasWidth - MARGIN_10_PCT * 2,
-        isCenter: false,
-      },
-      {
-        type: "horizontal",
-        x: MARGIN_10_PCT,
-        y: canvasHeight - MARGIN_10_PCT,
-        length: canvasWidth - MARGIN_10_PCT * 2,
-        isCenter: false,
+  // TOP MARGINS
+  if (checkTop) {
+    if (Math.abs(dEdges.top - MARGIN_5_PCT) < snapThreshold) {
+      if (checkAlign(dEdges.top, MARGIN_5_PCT, false, "horizontal")) {
+        activeGuides.push({
+          type: "horizontal",
+          x: 0,
+          y: MARGIN_5_PCT,
+          length: canvasWidth,
+          isCenter: false,
+        });
       }
-    );
+    }
+    if (Math.abs(dEdges.top - MARGIN_10_PCT) < snapThreshold) {
+      if (checkAlign(dEdges.top, MARGIN_10_PCT, false, "horizontal")) {
+        activeGuides.push({
+          type: "horizontal",
+          x: 0,
+          y: MARGIN_10_PCT,
+          length: canvasWidth,
+          isCenter: false,
+        });
+      }
+    }
+  }
 
-    if (isNear10Left) {
-      const dist = Math.abs(dEdges.left - MARGIN_10_PCT);
-      if (dist < minSnapDistX) {
-        snapDx = MARGIN_10_PCT - dEdges.left;
-        minSnapDistX = dist;
+  // BOTTOM MARGINS
+  if (checkBottom) {
+    if (
+      Math.abs(dEdges.bottom - (canvasHeight - MARGIN_5_PCT)) < snapThreshold
+    ) {
+      if (
+        checkAlign(
+          dEdges.bottom,
+          canvasHeight - MARGIN_5_PCT,
+          false,
+          "horizontal"
+        )
+      ) {
+        activeGuides.push({
+          type: "horizontal",
+          x: 0,
+          y: canvasHeight - MARGIN_5_PCT,
+          length: canvasWidth,
+          isCenter: false,
+        });
       }
     }
-    if (isNear10Right) {
-      const dist = Math.abs(dEdges.right - (canvasWidth - MARGIN_10_PCT));
-      if (dist < minSnapDistX) {
-        snapDx = canvasWidth - MARGIN_10_PCT - dEdges.right;
-        minSnapDistX = dist;
-      }
-    }
-    if (isNear10Top) {
-      const dist = Math.abs(dEdges.top - MARGIN_10_PCT);
-      if (dist < minSnapDistY) {
-        snapDy = MARGIN_10_PCT - dEdges.top;
-        minSnapDistY = dist;
-      }
-    }
-    if (isNear10Bottom) {
-      const dist = Math.abs(dEdges.bottom - (canvasHeight - MARGIN_10_PCT));
-      if (dist < minSnapDistY) {
-        snapDy = canvasHeight - MARGIN_10_PCT - dEdges.bottom;
-        minSnapDistY = dist;
+    if (
+      Math.abs(dEdges.bottom - (canvasHeight - MARGIN_10_PCT)) < snapThreshold
+    ) {
+      if (
+        checkAlign(
+          dEdges.bottom,
+          canvasHeight - MARGIN_10_PCT,
+          false,
+          "horizontal"
+        )
+      ) {
+        activeGuides.push({
+          type: "horizontal",
+          x: 0,
+          y: canvasHeight - MARGIN_10_PCT,
+          length: canvasWidth,
+          isCenter: false,
+        });
       }
     }
   }
@@ -214,74 +234,66 @@ export const calculateSnapping = (
   const canvasMidX = canvasWidth / 2;
   const canvasMidY = canvasHeight / 2;
 
-  const pageVerticalTargets = [
-    { val: 0, type: "left" },
-    { val: canvasWidth, type: "right" },
-    { val: canvasMidX, type: "center" },
-  ];
+  // Vertical Targets (Left, Right, Center)
+  if (checkLeft && checkAlign(dEdges.left, 0, false, "vertical")) {
+    activeGuides.push({
+      type: "vertical",
+      x: 0,
+      y: 0,
+      length: canvasHeight,
+      isCenter: false,
+    });
+  }
+  if (checkRight && checkAlign(dEdges.right, canvasWidth, false, "vertical")) {
+    activeGuides.push({
+      type: "vertical",
+      x: canvasWidth,
+      y: 0,
+      length: canvasHeight,
+      isCenter: false,
+    });
+  }
+  if (checkCenterX && checkAlign(dEdges.midX, canvasMidX, true, "vertical")) {
+    activeGuides.push({
+      type: "vertical",
+      x: canvasMidX,
+      y: 0,
+      length: canvasHeight,
+      isCenter: true,
+    });
+  }
 
-  pageVerticalTargets.forEach((target) => {
-    if (
-      checkAlign(
-        dEdges.left,
-        target.val,
-        target.type === "center",
-        "vertical"
-      ) ||
-      checkAlign(
-        dEdges.right,
-        target.val,
-        target.type === "center",
-        "vertical"
-      ) ||
-      checkAlign(dEdges.midX, target.val, target.type === "center", "vertical")
-    ) {
-      activeGuides.push({
-        type: "vertical",
-        x: target.val,
-        y: 0,
-        length: canvasHeight,
-        isCenter: target.type === "center",
-      });
-    }
-  });
-
-  const pageHorizontalTargets = [
-    { val: 0, type: "top" },
-    { val: canvasHeight, type: "bottom" },
-    { val: canvasMidY, type: "center" },
-  ];
-
-  pageHorizontalTargets.forEach((target) => {
-    if (
-      checkAlign(
-        dEdges.top,
-        target.val,
-        target.type === "center",
-        "horizontal"
-      ) ||
-      checkAlign(
-        dEdges.bottom,
-        target.val,
-        target.type === "center",
-        "horizontal"
-      ) ||
-      checkAlign(
-        dEdges.midY,
-        target.val,
-        target.type === "center",
-        "horizontal"
-      )
-    ) {
-      activeGuides.push({
-        type: "horizontal",
-        x: 0,
-        y: target.val,
-        length: canvasWidth,
-        isCenter: target.type === "center",
-      });
-    }
-  });
+  // Horizontal Targets (Top, Bottom, Center)
+  if (checkTop && checkAlign(dEdges.top, 0, false, "horizontal")) {
+    activeGuides.push({
+      type: "horizontal",
+      x: 0,
+      y: 0,
+      length: canvasWidth,
+      isCenter: false,
+    });
+  }
+  if (
+    checkBottom &&
+    checkAlign(dEdges.bottom, canvasHeight, false, "horizontal")
+  ) {
+    activeGuides.push({
+      type: "horizontal",
+      x: 0,
+      y: canvasHeight,
+      length: canvasWidth,
+      isCenter: false,
+    });
+  }
+  if (checkCenterY && checkAlign(dEdges.midY, canvasMidY, true, "horizontal")) {
+    activeGuides.push({
+      type: "horizontal",
+      x: 0,
+      y: canvasMidY,
+      length: canvasWidth,
+      isCenter: true,
+    });
+  }
 
   // --- 4. OBJECT TO OBJECT ---
   objects.forEach((other) => {
@@ -297,49 +309,117 @@ export const calculateSnapping = (
       bottom: oBounds.maxY,
     };
 
-    const xComparisons = [
-      { dVal: dEdges.left, oVal: oEdges.left, isCenter: false },
-      { dVal: dEdges.left, oVal: oEdges.right, isCenter: false },
-      { dVal: dEdges.right, oVal: oEdges.left, isCenter: false },
-      { dVal: dEdges.right, oVal: oEdges.right, isCenter: false },
-      { dVal: dEdges.midX, oVal: oEdges.midX, isCenter: true },
-    ];
-
-    xComparisons.forEach((comp) => {
-      if (checkAlign(comp.dVal, comp.oVal, comp.isCenter, "vertical")) {
-        const startYGuide = Math.min(dEdges.top, oEdges.top);
-        const endYGuide = Math.max(dEdges.bottom, oEdges.bottom);
+    // VERTICAL ALIGNMENT
+    // Left
+    if (checkLeft) {
+      if (checkAlign(dEdges.left, oEdges.left, false, "vertical")) {
         activeGuides.push({
           type: "vertical",
-          x: comp.oVal,
-          y: startYGuide,
-          length: endYGuide - startYGuide,
-          isCenter: comp.isCenter,
+          x: oEdges.left,
+          y: Math.min(dEdges.top, oEdges.top),
+          length: Math.max(dEdges.bottom, oEdges.bottom),
+          isCenter: false,
         });
       }
-    });
+      if (checkAlign(dEdges.left, oEdges.right, false, "vertical")) {
+        activeGuides.push({
+          type: "vertical",
+          x: oEdges.right,
+          y: Math.min(dEdges.top, oEdges.top),
+          length: Math.max(dEdges.bottom, oEdges.bottom),
+          isCenter: false,
+        });
+      }
+    }
+    // Right
+    if (checkRight) {
+      if (checkAlign(dEdges.right, oEdges.left, false, "vertical")) {
+        activeGuides.push({
+          type: "vertical",
+          x: oEdges.left,
+          y: Math.min(dEdges.top, oEdges.top),
+          length: Math.max(dEdges.bottom, oEdges.bottom),
+          isCenter: false,
+        });
+      }
+      if (checkAlign(dEdges.right, oEdges.right, false, "vertical")) {
+        activeGuides.push({
+          type: "vertical",
+          x: oEdges.right,
+          y: Math.min(dEdges.top, oEdges.top),
+          length: Math.max(dEdges.bottom, oEdges.bottom),
+          isCenter: false,
+        });
+      }
+    }
+    // Center X
+    if (checkCenterX) {
+      if (checkAlign(dEdges.midX, oEdges.midX, true, "vertical")) {
+        activeGuides.push({
+          type: "vertical",
+          x: oEdges.midX,
+          y: Math.min(dEdges.top, oEdges.top),
+          length: Math.max(dEdges.bottom, oEdges.bottom),
+          isCenter: true,
+        });
+      }
+    }
 
-    const yComparisons = [
-      { dVal: dEdges.top, oVal: oEdges.top, isCenter: false },
-      { dVal: dEdges.top, oVal: oEdges.bottom, isCenter: false },
-      { dVal: dEdges.bottom, oVal: oEdges.top, isCenter: false },
-      { dVal: dEdges.bottom, oVal: oEdges.bottom, isCenter: false },
-      { dVal: dEdges.midY, oVal: oEdges.midY, isCenter: true },
-    ];
-
-    yComparisons.forEach((comp) => {
-      if (checkAlign(comp.dVal, comp.oVal, comp.isCenter, "horizontal")) {
-        const startXGuide = Math.min(dEdges.left, oEdges.left);
-        const endXGuide = Math.max(dEdges.right, oEdges.right);
+    // HORIZONTAL ALIGNMENT
+    // Top
+    if (checkTop) {
+      if (checkAlign(dEdges.top, oEdges.top, false, "horizontal")) {
         activeGuides.push({
           type: "horizontal",
-          x: startXGuide,
-          y: comp.oVal,
-          length: endXGuide - startXGuide,
-          isCenter: comp.isCenter,
+          x: Math.min(dEdges.left, oEdges.left),
+          y: oEdges.top,
+          length: Math.max(dEdges.right, oEdges.right),
+          isCenter: false,
         });
       }
-    });
+      if (checkAlign(dEdges.top, oEdges.bottom, false, "horizontal")) {
+        activeGuides.push({
+          type: "horizontal",
+          x: Math.min(dEdges.left, oEdges.left),
+          y: oEdges.bottom,
+          length: Math.max(dEdges.right, oEdges.right),
+          isCenter: false,
+        });
+      }
+    }
+    // Bottom
+    if (checkBottom) {
+      if (checkAlign(dEdges.bottom, oEdges.top, false, "horizontal")) {
+        activeGuides.push({
+          type: "horizontal",
+          x: Math.min(dEdges.left, oEdges.left),
+          y: oEdges.top,
+          length: Math.max(dEdges.right, oEdges.right),
+          isCenter: false,
+        });
+      }
+      if (checkAlign(dEdges.bottom, oEdges.bottom, false, "horizontal")) {
+        activeGuides.push({
+          type: "horizontal",
+          x: Math.min(dEdges.left, oEdges.left),
+          y: oEdges.bottom,
+          length: Math.max(dEdges.right, oEdges.right),
+          isCenter: false,
+        });
+      }
+    }
+    // Center Y
+    if (checkCenterY) {
+      if (checkAlign(dEdges.midY, oEdges.midY, true, "horizontal")) {
+        activeGuides.push({
+          type: "horizontal",
+          x: Math.min(dEdges.left, oEdges.left),
+          y: oEdges.midY,
+          length: Math.max(dEdges.right, oEdges.right),
+          isCenter: true,
+        });
+      }
+    }
   });
 
   return { snapDx, snapDy, activeGuides };

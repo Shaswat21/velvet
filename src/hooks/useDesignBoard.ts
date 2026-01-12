@@ -167,6 +167,10 @@ export const useDesignBoard = (
     else setSelectedIds([id]);
   };
 
+  const handleSelectAll = () => {
+    setSelectedIds(localObjects.map((obj) => obj.id));
+  };
+
   const handleStartRotation = (e: React.MouseEvent, id: string) => {
     const obj = localObjects.find((o) => o.id === id);
     if (obj?.isLocked) return;
@@ -417,6 +421,7 @@ export const useDesignBoard = (
     handleUngroup,
     handleDuplicate,
     handleDelete: handleDeleteSelected,
+    selectAll: handleSelectAll,
   });
 
   /* --- EVENT HANDLERS --- */
@@ -700,6 +705,63 @@ export const useDesignBoard = (
       if (newH < 10) {
         newH = 10;
         if (direction.includes("n")) newY = startYPos + startH - 10;
+      }
+
+      const canvasWidth = containerRef.current?.clientWidth || 800;
+      const canvasHeight = containerRef.current?.clientHeight || 600;
+
+      const snapResult = calculateSnapping(
+        obj,
+        newX,
+        newY,
+        localObjects,
+        canvasWidth,
+        canvasHeight,
+        [obj.id],
+        5, // Threshold
+        newW, // Pass the NEW Width
+        newH,
+        direction
+      );
+
+      // Apply Snap Offsets to position
+      let { snapDx, snapDy } = snapResult;
+
+      // 6. Filter Snaps (Stabilization)
+      // if (direction === "w" || direction === "e") snapDy = 0;
+      // if (direction === "n" || direction === "s") snapDx = 0;
+
+      setGuides(snapResult.activeGuides);
+
+      // 7. Apply Snaps
+      // Horizontal
+      if (snapDx !== 0) {
+        if (direction.includes("w")) {
+          // Left Handle: Snap X, Adjust Width
+          newX += snapDx;
+          newW -= snapDx;
+        } else if (direction.includes("e")) {
+          // Right Handle: Snap Width Only
+          newW += snapDx;
+        } else {
+          // Center Handle (Vertical resize) or Corner: Move X
+          newX += snapDx;
+        }
+      }
+
+      // Vertical
+      if (snapDy !== 0) {
+        if (direction.includes("n")) {
+          // Top Handle: Snap Y, Adjust Height
+          newY += snapDy;
+          newH -= snapDy;
+        } else if (direction.includes("s")) {
+          // Bottom Handle: Snap Height Only
+          newH += snapDy;
+        } else {
+          // Center Handle (Horizontal resize) or Corner: Move Y
+          newY += snapDy;
+        }
       }
 
       if (obj.type === "text") {
