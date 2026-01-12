@@ -39,39 +39,32 @@ export const ImageItem = ({
   const imgY = (obj as any).imageY ?? 0;
   const imgScale = (obj as any).imageScale ?? 1;
 
-  // --- 1. CALCULATE RENDERED SIZE ---
-  // Calculates the actual pixel size of the image inside the box
-  // factoring in "Cover" logic and the User's Zoom (imgScale)
+  // Calculate pixel size for "Cover" logic
   const getRenderedDimensions = () => {
-    // If natural ratio isn't loaded yet, assume it matches the box
     if (!naturalRatio) return { width: obj.width, height: obj.height };
-
     const containerRatio = obj.width / obj.height;
     let baseW, baseH;
-
-    // "Cover" Logic: Fit the image so it covers the box fully
     if (containerRatio > naturalRatio) {
-      // Container is wider than image -> Match Width
       baseW = obj.width;
       baseH = obj.width / naturalRatio;
     } else {
-      // Container is taller than image -> Match Height
       baseH = obj.height;
       baseW = obj.height * naturalRatio;
     }
-
-    // Apply User Scale
-    return {
-      width: baseW * imgScale,
-      height: baseH * imgScale,
-    };
+    return { width: baseW * imgScale, height: baseH * imgScale };
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
+    // Only allow editing if selected AND not locked
     if (!props.isSelected) return;
     e.stopPropagation();
-    !obj.isLocked ? setIsEditing(true) : setIsEditing(false);
-    props.setDragTarget(null); // Disable parent drag
+
+    if (!obj.isLocked) {
+      setIsEditing(true);
+      props.setDragTarget(null); // Ensure we stop dragging the container
+    } else {
+      setIsEditing(false);
+    }
   };
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -80,51 +73,54 @@ export const ImageItem = ({
   };
 
   const handleInternalMouseDown = (e: React.MouseEvent) => {
-    // Normal Selection Mode
+    // 1. Normal Mode
     if (!isEditing) {
       onMouseDown?.(e);
       if (props.tool !== "select") return;
       e.stopPropagation();
-      if (e.shiftKey || e.ctrlKey || e.metaKey) addSelectedId(obj.id);
-      else props.setSelectedId(obj.id);
-      props.setDragTarget({ id: obj.id });
+
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        addSelectedId(obj.id);
+      } else {
+        props.setSelectedId(obj.id);
+      }
+
+      // KEY LOGIC: If it's a background, NEVER drag the container.
+      // If it's a normal image, drag it unless locked.
+      if (!obj.isBackground && !obj.isLocked) {
+        props.setDragTarget({ id: obj.id });
+      }
       return;
     }
 
-    // Edit Mode: Start Panning
+    // 2. Edit Mode (Pan logic)
     e.stopPropagation();
     e.preventDefault();
     setDragStart({ x: e.clientX, y: e.clientY });
   };
 
-  // --- PAN DRAG LOGIC (Inside Edit Mode) ---
+  // --- PANNING LOGIC ---
   useEffect(() => {
     if (!isEditing || !dragStart) return;
-
     const handleMouseMove = (e: MouseEvent) => {
       const { width: currentImgW, height: currentImgH } =
         getRenderedDimensions();
-
       const dx = (e.clientX - dragStart.x) / zoomFactor;
       const dy = (e.clientY - dragStart.y) / zoomFactor;
 
-      // Convert pixel delta to % of the IMAGE size
+      // Calculate % shift
       const percentDx = dx / currentImgW;
       const percentDy = dy / currentImgH;
 
       let newX = imgX + percentDx;
       let newY = imgY + percentDy;
 
-      // --- NO EMPTY SPACE CONSTRAINTS ---
-      // Limit offsets so the image edge never crosses the container edge.
-      // Range: +/- (1 - Ratio) / 2
+      // Constraints
       const ratioW = obj.width / currentImgW;
       const ratioH = obj.height / currentImgH;
-
       const limitX = (1 - ratioW) / 2;
       const limitY = (1 - ratioH) / 2;
 
-      // Clamp
       if (newX > limitX) newX = limitX;
       if (newX < -limitX) newX = -limitX;
       if (newY > limitY) newY = limitY;
@@ -133,7 +129,6 @@ export const ImageItem = ({
       updateObject(obj.id, { imageX: newX, imageY: newY } as any);
       setDragStart({ x: e.clientX, y: e.clientY });
     };
-
     const handleMouseUp = () => setDragStart(null);
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
@@ -153,7 +148,7 @@ export const ImageItem = ({
     naturalRatio,
   ]);
 
-  // Click Outside to Exit Edit Mode
+  // Click outside to exit edit mode
   useEffect(() => {
     if (!isEditing) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -168,7 +163,6 @@ export const ImageItem = ({
     updateObject(obj.id, { imageScale: val[0] } as any);
   };
 
-  // --- STYLES ---
   const containerRatio = obj.width / obj.height;
   const isContainerWider = containerRatio > naturalRatio;
 
@@ -176,17 +170,17 @@ export const ImageItem = ({
     position: "absolute",
     left: "50%",
     top: "50%",
-    // Force CSS to stretch to cover manually so we can use transforms
     width: isContainerWider ? "100%" : "auto",
     height: isContainerWider ? "auto" : "100%",
     maxWidth: "none",
     maxHeight: "none",
-    // Transform: Center -> Pan -> Zoom
     transform: `translate(-50%, -50%) translate(${
       imgX * Math.round(imgScale * 100)
     }%, ${imgY * Math.round(imgScale * 100)}%) scale(${Math.max(1, imgScale)})`,
     pointerEvents: "none",
     userSelect: "none",
+    // Use COVER for backgrounds, FILL for standard images
+    objectFit: obj.isBackground ? "cover" : "fill",
   };
 
   return (
@@ -196,10 +190,10 @@ export const ImageItem = ({
       {...props}
       onMouseDown={handleInternalMouseDown}
       onDoubleClick={handleDoubleClick}
-      hideResizeHandles={false}
+      hideResizeHandles={obj.isBackground} // Hide blue box handles
       isEditing={isEditing}
-      lockAspectRatio={!isEditing} // Lock only when NOT cropping
-      metaData={getRenderedDimensions()} // Pass dimensions to Hook for physics
+      lockAspectRatio={!isEditing}
+      metaData={getRenderedDimensions()}
     >
       <div
         ref={innerRef}
@@ -211,7 +205,6 @@ export const ImageItem = ({
           zIndex: isEditing ? 50 : "auto",
         }}
       >
-        {/* 1. Ghost Image (Edit Mode Background) */}
         {isEditing && (
           <img
             src={obj.src}
@@ -220,13 +213,12 @@ export const ImageItem = ({
           />
         )}
 
-        {/* 2. Main Image (Inside Mask) */}
         <div
           className="absolute inset-0 overflow-hidden"
           style={{
             borderRadius: `${obj.borderRadius * zoomFactor}px`,
             border: isEditing
-              ? `2px solid #8b5cf6` // Purple active border
+              ? `2px solid #8b5cf6`
               : `${obj.strokeWidth * zoomFactor}px solid ${obj.strokeColor}`,
             boxShadow: isEditing ? "0 0 0 1px rgba(255,255,255,0.5)" : "none",
           }}
@@ -239,7 +231,6 @@ export const ImageItem = ({
           />
         </div>
 
-        {/* 3. Slider Controls */}
         {!obj.isLocked && isEditing && (
           <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 z-60 w-48 image-edit-controls">
             <div

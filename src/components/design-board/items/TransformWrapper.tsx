@@ -83,8 +83,9 @@ export const TransformWrapper = ({
       startImgX: (obj as any).imageX ?? 0,
       startImgY: (obj as any).imageY ?? 0,
       direction,
-      lockAspectRatio:
-        !(obj.type == "text") ? finalLockAspectRatio : shouldLockRatio,
+      lockAspectRatio: !(obj.type == "text")
+        ? finalLockAspectRatio
+        : shouldLockRatio,
       isCrop: finalIsCrop,
       metaData,
     });
@@ -118,7 +119,11 @@ export const TransformWrapper = ({
         transformOrigin: "center center",
         pointerEvents: effectivePointerEvents,
         cursor:
-          tool !== "select" ? "crosshair" : obj.isLocked ? "default" : "move",
+          tool !== "select"
+            ? "crosshair"
+            : obj.isLocked || (obj.type == "image" && obj.isBackground)
+            ? "default"
+            : "move",
         zIndex: isEditing ? 50 : "auto",
       }}
       className="group"

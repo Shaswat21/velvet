@@ -12,7 +12,7 @@ import { ImageItem } from "./items/ImageItem";
 import { GroupItem } from "./items/GroupItem";
 import { PathItem } from "./items/PathItem";
 import type { CanvasObject, ToolType } from "@/lib/types";
-import { LockIcon, Unlock } from "lucide-react";
+import { LockIcon, Unlock, Maximize, Minimize, RefreshCcw } from "lucide-react";
 import type { GuideLine } from "@/lib/utils/snappingUtils";
 
 interface CanvasAreaProps {
@@ -37,6 +37,7 @@ interface CanvasAreaProps {
   setResizingTarget: (t: any) => void;
   setRotatingTarget: (e: React.MouseEvent, id: string) => void;
   updateObject: (id: string, updates: any) => void;
+  setObjects: (objs: CanvasObject[]) => void;
   onDuplicate: () => void;
   onGroup: () => void;
   onUngroup: () => void;
@@ -68,6 +69,7 @@ export const CanvasArea = ({
   setResizingTarget,
   setRotatingTarget,
   updateObject,
+  setObjects,
   onDuplicate,
   onGroup,
   onUngroup,
@@ -81,28 +83,23 @@ export const CanvasArea = ({
     id ? setSelectedId([id]) : setSelectedId([]);
 
   const zoomScale = zoom[0] / 100;
-
   const ghostCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = ghostCanvasRef.current;
     if (!canvas || !isDrawing || currentPath.length < 2 || tool !== "pen")
       return;
-
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
     const scale = window.devicePixelRatio || 1;
     canvas.width = width * zoomScale * scale;
     canvas.height = height * zoomScale * scale;
     ctx.scale(scale, scale);
-
     ctx.clearRect(0, 0, width * zoomScale, height * zoomScale);
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 3 * zoomScale;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-
     ctx.beginPath();
     ctx.moveTo(currentPath[0].x * zoomScale, currentPath[0].y * zoomScale);
     for (let i = 1; i < currentPath.length; i++) {
@@ -110,6 +107,74 @@ export const CanvasArea = ({
     }
     ctx.stroke();
   }, [currentPath, isDrawing, tool, width, height, zoomScale]);
+
+  // --- BACKGROUND LOGIC ---
+
+  const handleSetBackground = (newBgId: string) => {
+    // Properties for the new background
+    const bgProps = {
+      isBackground: true,
+      isLocked: false, // Per your request: Unlocked initially
+      x: 0,
+      y: 0,
+      width: width,
+      height: height,
+      rotation: 0,
+    };
+
+    // Create a copy of objects to modify
+    let newObjects = [...objects];
+
+    // 1. Remove ANY existing background first (Replace Logic)
+    const existingBg = newObjects.find((o) => (o as any).isBackground);
+    if (existingBg) {
+      newObjects = newObjects.filter((o) => o.id !== existingBg.id);
+    }
+
+    // 2. Find the object we want to make background
+    const targetIndex = newObjects.findIndex((o) => o.id === newBgId);
+    if (targetIndex === -1) return;
+
+    // 3. Update its properties
+    const targetObj = { ...newObjects[targetIndex], ...bgProps };
+
+    // 4. MOVE TO INDEX 0 (This fixes the visual stacking order!)
+    newObjects.splice(targetIndex, 1); // Remove from current position
+    newObjects.unshift(targetObj); // Add to the bottom of the stack
+
+    // 5. Save State
+    setObjects(newObjects);
+    setSelectedId([]);
+  };
+
+  const handleDetachBackground = (id: string) => {
+    const newW = width * 0.75;
+    const newH = height * 0.75;
+    const newX = (width - newW) / 2;
+    const newY = (height - newH) / 2;
+
+    // When detaching, we just update properties.
+    // It stays at index 0 (bottom) unless you want to move it to top.
+    // If you want it to pop to top, use the same splice/push logic here.
+    updateObject(id, {
+      isBackground: false,
+      isLocked: false,
+      width: newW,
+      height: newH,
+      x: newX,
+      y: newY,
+    });
+    setSelectedId([id]);
+  };
+
+  const selectedObject =
+    selectedIds.length === 1
+      ? objects.find((o) => o.id === selectedIds[0])
+      : null;
+  const isSelectedBackground =
+    selectedObject && (selectedObject as any).isBackground;
+
+  const hasExistingBackground = objects.some((o) => (o as any).isBackground);
 
   return (
     <main
@@ -152,7 +217,7 @@ export const CanvasArea = ({
                 className="absolute top-0 left-0 w-full h-full pointer-events-none"
               />
 
-              {/* GUIDES */}
+              {/* Guides */}
               {guides.map((g, i) => (
                 <div
                   key={i}
@@ -189,9 +254,11 @@ export const CanvasArea = ({
                 {objects.map((obj) => {
                   const isSelected = selectedIds.includes(obj.id);
                   const isDraggingItem = dragTarget?.id === obj.id;
+                  const showHandles = isSelected && !(obj as any).isBackground;
+
                   const commonProps = {
                     zoom: zoom[0],
-                    isSelected,
+                    isSelected: showHandles,
                     tool,
                     isDragging: isDraggingItem,
                     setDragTarget,
@@ -233,23 +300,20 @@ export const CanvasArea = ({
                         onUpdate={updateObject}
                       />
                     );
-
-                  // UPDATE: PATH ITEM NOW HAS 'tool' PROP
                   if (obj.type === "path") {
                     return (
                       <PathItem
                         obj={obj}
                         zoom={zoom[0]}
                         isSelected={isSelected}
-                        tool={tool} // Passed here
+                        tool={tool}
                         setResizingTarget={setResizingTarget}
                         setRotatingTarget={setRotatingTarget}
                         onMouseDown={(e) => {
                           if (tool !== "select") return;
                           e.stopPropagation();
-                          if (e.shiftKey) {
-                            handleAddSelect(obj.id);
-                          } else {
+                          if (e.shiftKey) handleAddSelect(obj.id);
+                          else {
                             if (!isSelected) handleSetSelect(obj.id);
                             setDragTarget({
                               id: obj.id,
@@ -266,10 +330,10 @@ export const CanvasArea = ({
                       />
                     );
                   }
-
                   return null;
                 })}
 
+                {/* Visual Helpers */}
                 {isDrawing && tool === "pen" && (
                   <canvas
                     ref={ghostCanvasRef}
@@ -284,7 +348,6 @@ export const CanvasArea = ({
                     }}
                   />
                 )}
-
                 {tempRect && (
                   <div
                     style={{
@@ -315,43 +378,82 @@ export const CanvasArea = ({
               </div>
             </div>
           </ContextMenuTrigger>
+
           <ContextMenuContent>
-            {selectedIds.length > 0 && (
+            {selectedIds.length === 1 && isSelectedBackground ? (
               <>
-                <ContextMenuItem onClick={onDuplicate}>
-                  Duplicate
+                <ContextMenuItem
+                  onClick={() => handleDetachBackground(selectedIds[0])}
+                >
+                  <Minimize className="w-4 h-4 mr-2" /> Detach from Background
                 </ContextMenuItem>
-                <ContextMenuSeparator />
-              </>
-            )}
-            {selectedIds.length === 1 && (
-              <>
+
                 <ContextMenuItem onClick={() => onToggleLock(selectedIds[0])}>
-                  {objects.find((o) => o.id === selectedIds[0])?.isLocked ? (
+                  {selectedObject?.isLocked ? (
                     <>
-                      <Unlock className="w-4 h-4 mr-2" /> Unlock
+                      <Unlock className="w-4 h-4 mr-2" /> Unlock Background
                     </>
                   ) : (
                     <>
-                      <LockIcon className="w-4 h-4 mr-2" /> Lock
+                      <LockIcon className="w-4 h-4 mr-2" /> Lock Background
                     </>
                   )}
                 </ContextMenuItem>
-                <ContextMenuSeparator />
+              </>
+            ) : (
+              <>
+                {selectedIds.length === 1 &&
+                  selectedObject?.type === "image" && (
+                    <>
+                      <ContextMenuItem
+                        onClick={() => handleSetBackground(selectedIds[0])}
+                      >
+                        {hasExistingBackground ? (
+                          <>
+                            <RefreshCcw className="w-4 h-4 mr-2" /> Replace
+                            Background
+                          </>
+                        ) : (
+                          <>
+                            <Maximize className="w-4 h-4 mr-2" /> Use as
+                            Background
+                          </>
+                        )}
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                    </>
+                  )}
+                {selectedIds.length > 0 && (
+                  <ContextMenuItem onClick={onDuplicate}>
+                    Duplicate
+                  </ContextMenuItem>
+                )}
+                {selectedIds.length === 1 && (
+                  <ContextMenuItem onClick={() => onToggleLock(selectedIds[0])}>
+                    {objects.find((o) => o.id === selectedIds[0])?.isLocked ? (
+                      <>
+                        <Unlock className="w-4 h-4 mr-2" /> Unlock
+                      </>
+                    ) : (
+                      <>
+                        <LockIcon className="w-4 h-4 mr-2" /> Lock
+                      </>
+                    )}
+                  </ContextMenuItem>
+                )}
+                {selectedIds.length > 1 && (
+                  <ContextMenuItem onClick={onGroup}>Group</ContextMenuItem>
+                )}
+                {selectedIds.length === 1 &&
+                  objects.find((o) => o.id === selectedIds[0])?.type ===
+                    "group" && (
+                    <ContextMenuItem onClick={onUngroup}>
+                      Ungroup
+                    </ContextMenuItem>
+                  )}
+                <ContextMenuItem onClick={onDelete}>Delete</ContextMenuItem>
               </>
             )}
-            {selectedIds.length > 1 && (
-              <ContextMenuItem onClick={onGroup}>Group</ContextMenuItem>
-            )}
-            {selectedIds.length === 1 &&
-              objects.find((o) => o.id === selectedIds[0])?.type ===
-                "group" && (
-                <>
-                  <ContextMenuItem onClick={onUngroup}>Ungroup</ContextMenuItem>
-                  <ContextMenuSeparator />
-                </>
-              )}
-            <ContextMenuItem onClick={onDelete}>Delete</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
       </div>

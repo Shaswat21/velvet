@@ -14,13 +14,8 @@ import { useDesignBoard } from "@/hooks/useDesignBoard";
 import { type ExportOptions } from "./ExportDialog";
 import {
   type ImageObject,
-  type CanvasObject,
-  type RectObject,
-  type PathObject,
-  type TextObject,
 } from "@/lib/types";
 import { ENABLE_DEV_MODE, VELVET_KEY } from "@/lib/constants";
-import { toast } from "sonner";
 import { generateSVGString } from "@/lib/render";
 
 // --- GIF WORKER ---
@@ -430,6 +425,7 @@ export default function DesignBoard({
         tempRect={board.tempRect}
         selectionBox={board.selectionBox}
         dragTarget={board.dragTarget}
+        setObjects={board.setObjects}
         setDragTarget={board.setDragTarget}
         setResizingTarget={board.setResizingTarget}
         updateObject={board.updateObject}

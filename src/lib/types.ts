@@ -43,9 +43,10 @@ export interface ImageObject extends BaseObject {
   opacity: number;
   strokeColor: string;
   strokeWidth: number;
-  imageX?: number;     // X offset percentage (0.0 to 1.0 or more)
-  imageY?: number;     // Y offset percentage
-  imageScale?: number; // Scale factor (1.0 = 100%)
+  imageX?: number;
+  imageY?: number;
+  imageScale?: number;
+  isBackground?: boolean;
 }
 
 export interface GroupObject extends BaseObject {
@@ -63,4 +64,9 @@ export interface PathObject extends BaseObject {
   opacity: number;
 }
 
-export type CanvasObject = TextObject | RectObject | ImageObject | GroupObject | PathObject;
+export type CanvasObject =
+  | TextObject
+  | RectObject
+  | ImageObject
+  | GroupObject
+  | PathObject;

@@ -51,7 +51,12 @@ export const Toolbar = ({
   handleCloseToolbar,
   isClosingToolbar,
 }: ToolbarProps) => {
-  if (!selectedObject || selectedObject.isLocked) return null;
+  if (
+    !selectedObject ||
+    selectedObject.isLocked ||
+    (selectedObject.type === "image" && selectedObject.isBackground)
+  )
+    return null;
 
   const isText = selectedObject.type === "text";
   const textObj = isText ? (selectedObject as TextObject) : null;
@@ -275,8 +280,10 @@ export const Toolbar = ({
             <PopoverContent className="w-64 p-3" sideOffset={5}>
               <div className="space-y-4">
                 <div>
-                   <div className="text-xs text-gray-500 font-medium mb-2">Color</div>
-                   <div className="grid grid-cols-7 gap-1">
+                  <div className="text-xs text-gray-500 font-medium mb-2">
+                    Color
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
                     {HIGHLIGHT_COLORS.map((color) => (
                       <button
                         key={color}
