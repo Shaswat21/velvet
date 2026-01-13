@@ -82,7 +82,13 @@ export const TextItem = ({
   };
 
   // Determine if interaction should be disabled
-  const isDisabled = tool === "hand" || obj.isLocked || isGrouped || isDragging || tool === "rect" || tool === "pen";
+  const isDisabled =
+    tool === "hand" ||
+    obj.isLocked ||
+    isGrouped ||
+    isDragging ||
+    tool === "rect" ||
+    tool === "pen";
 
   const decoration =
     [
@@ -120,6 +126,8 @@ export const TextItem = ({
             ${isDisabled ? "select-none pointer-events-none" : ""} 
           `}
           style={{
+            filter: obj.blur ? `blur(${obj.blur}px)` : "none",
+            opacity: obj.opacity ?? 1,
             fontFamily: obj.fontFamily,
             fontSize: `${obj.fontSize * zoomFactor}px`,
             color: obj.color,

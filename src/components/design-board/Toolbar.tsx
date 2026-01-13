@@ -32,11 +32,17 @@ import {
   Circle,
   Droplets,
   RotateCw,
+  Activity,
+  Ghost,
+  Waves,
+  BoxSelect,
 } from "lucide-react";
 import { ColorPicker } from "./ui/ColorPicker";
 import { FONTS, HIGHLIGHT_COLORS } from "@/lib/constants";
 import type { CanvasObject, TextObject } from "@/lib/types";
 import { FancySlider } from "./ui/FancySlider";
+import { Toggle } from "../ui/toggle";
+import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 
 interface ToolbarProps {
   selectedObject: CanvasObject | undefined;
@@ -89,6 +95,11 @@ export const Toolbar = ({
       textTransform: s[(s.indexOf(currentTransform) + 1) % 4] as any,
     });
   };
+
+  // Helper to check if Fill/Border should be disabled
+  const isRect = selectedObject.type === "rect";
+  const rectObj = isRect ? (selectedObject as any) : null;
+  const isEffectActive = rectObj?.isGlass || rectObj?.isLiquid;
 
   return (
     <div
@@ -206,7 +217,7 @@ export const Toolbar = ({
             <TransformIcon className="h-4 w-4" />
           </Button>
 
-          {/* SPACING POPOVER (Letter Spacing & Line Height ONLY) */}
+          {/* SPACING POPOVER */}
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -247,7 +258,7 @@ export const Toolbar = ({
             </PopoverContent>
           </Popover>
 
-          {/* HIGHLIGHT POPOVER (Color Grid ONLY) */}
+          {/* HIGHLIGHT POPOVER */}
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -317,7 +328,12 @@ export const Toolbar = ({
       {/* ================= RECT (SHAPE) TOOLBAR ================= */}
       {selectedObject.type === "rect" && (
         <>
-          <div className="flex items-center gap-2 mr-2">
+          {/* FILL COLOR - Disabled if Effect Active */}
+          <div
+            className={`flex items-center gap-2 mr-2 ${
+              isEffectActive ? "opacity-40 pointer-events-none" : ""
+            }`}
+          >
             <span className="text-[10px] uppercase font-bold text-gray-400">
               Fill
             </span>
@@ -328,8 +344,15 @@ export const Toolbar = ({
               allowTransparent
             />
           </div>
+
           <div className="h-6 w-px bg-gray-300 mx-1"></div>
-          <div className="flex items-center gap-2 mr-2">
+
+          {/* BORDER - Disabled if Effect Active */}
+          <div
+            className={`flex items-center gap-2 mr-2 ${
+              isEffectActive ? "opacity-40 pointer-events-none" : ""
+            }`}
+          >
             <span className="text-[10px] uppercase font-bold text-gray-400">
               Border
             </span>
@@ -350,7 +373,10 @@ export const Toolbar = ({
               title="Stroke Width"
             />
           </div>
+
           <div className="h-6 w-px bg-gray-300 mx-1"></div>
+
+          {/* BORDER RADIUS */}
           <div className="flex items-center gap-2">
             <Circle className="h-3.5 w-3.5 text-gray-500" />
             <input
@@ -364,6 +390,147 @@ export const Toolbar = ({
               title="Border Radius"
             />
           </div>
+
+          {/* SHADOW CONTROL */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                size="icon"
+                variant={selectedObject.shadow ? "secondary" : "ghost"}
+                className={`h-8 w-8 rounded-sm`}
+                title="Drop Shadow"
+              >
+                <BoxSelect className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-4" sideOffset={5}>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold">Drop Shadow</span>
+                  <Toggle
+                    pressed={!!selectedObject.shadow}
+                    onPressedChange={(pressed) => {
+                      if (pressed) {
+                        // Apply presets based on active mode
+                        if ((selectedObject as any).isLiquid) {
+                          updateSelected({
+                            shadow: {
+                              color: "#00000033",
+                              blur: 24,
+                              x: 0,
+                              y: 6,
+                            },
+                          });
+                        } else if ((selectedObject as any).isGlass) {
+                          updateSelected({
+                            shadow: {
+                              color: "#0000005E",
+                              blur: 32,
+                              x: 0,
+                              y: 8,
+                            },
+                          });
+                        } else {
+                          updateSelected({
+                            shadow: {
+                              color: "#00000040",
+                              blur: 10,
+                              x: 0,
+                              y: 4,
+                            },
+                          });
+                        }
+                      } else {
+                        updateSelected({ shadow: null });
+                      }
+                    }}
+                    size="sm"
+                  >
+                    {selectedObject.shadow ? "On" : "Off"}
+                  </Toggle>
+                </div>
+
+                {selectedObject.shadow && (
+                  <div className="space-y-3 border-t pt-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Color</span>
+                      <input
+                        type="color"
+                        value={
+                          selectedObject.shadow.color.startsWith("#")
+                            ? selectedObject.shadow.color.substring(0, 7)
+                            : "#000000"
+                        }
+                        onChange={(e) =>
+                          updateSelected({
+                            shadow: {
+                              ...selectedObject.shadow!,
+                              color: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-6 h-6 p-0 border-none rounded cursor-pointer"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>Blur</span>
+                        <span>{selectedObject.shadow.blur}px</span>
+                      </div>
+                      <FancySlider
+                        value={selectedObject.shadow.blur}
+                        min={0}
+                        max={100}
+                        onChange={(val) =>
+                          updateSelected({
+                            shadow: { ...selectedObject.shadow!, blur: val },
+                          })
+                        }
+                        label={""}
+                        step={0}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>Offset X</span>
+                        <span>{selectedObject.shadow.x}px</span>
+                      </div>
+                      <FancySlider
+                        value={selectedObject.shadow.x}
+                        min={-50}
+                        max={50}
+                        onChange={(val) =>
+                          updateSelected({
+                            shadow: { ...selectedObject.shadow!, x: val },
+                          })
+                        }
+                        label={""}
+                        step={0}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>Offset Y</span>
+                        <span>{selectedObject.shadow.y}px</span>
+                      </div>
+                      <FancySlider
+                        value={selectedObject.shadow.y}
+                        min={-50}
+                        max={50}
+                        onChange={(val) =>
+                          updateSelected({
+                            shadow: { ...selectedObject.shadow!, y: val },
+                          })
+                        }
+                        label={""}
+                        step={0}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
         </>
       )}
 
@@ -406,57 +573,224 @@ export const Toolbar = ({
               className="w-10 h-8 text-xs text-center border rounded-md"
               title="Border Radius"
             />
-            <Droplets className="h-3.5 w-3.5 text-gray-500 ml-1" />
-            <input
-              type="number"
-              min={0}
-              max={1}
-              step={0.1}
-              value={selectedObject.opacity}
-              onChange={(e) =>
-                updateSelected({ opacity: Number(e.target.value) })
-              }
-              className="w-10 h-8 text-xs text-center border rounded-md"
-              title="Opacity (0-1)"
-            />
           </div>
         </>
       )}
 
-      {/* ================= COMMON DIMENSIONS ================= */}
+      {/* ================= OPACITY (Common) ================= */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            size="icon"
+            variant={selectedObject.opacity < 1 ? "secondary" : "ghost"}
+            className={`h-8 w-8 rounded-sm ${
+              rectObj?.isLiquid ? "opacity-40 pointer-events-none" : ""
+            }`}
+            title="Opacity"
+          >
+            <Droplets className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-64 p-4" sideOffset={5}>
+          <div className="flex flex-col gap-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-medium text-gray-500">
+                <span>Opacity</span>
+                <span>{Math.round((selectedObject.opacity ?? 1) * 100)}%</span>
+              </div>
+              <FancySlider
+                value={(selectedObject.opacity ?? 1) * 100}
+                min={0}
+                max={100}
+                step={1}
+                onChange={(val) => updateSelected({ opacity: val / 100 })}
+                label={""}
+              />
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* ================= BLUR & GLASS EFFECTS (Common + Rect Only) ================= */}
       {(selectedObject.type === "rect" || selectedObject.type === "image") && (
         <>
           <div className="h-6 w-px bg-gray-300 mx-1"></div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center h-8 border rounded-md px-2 bg-white gap-2">
-              <MoveVertical className="h-3 w-3 text-gray-400" />
-              <input
-                type="number"
-                value={selectedObject.width}
-                onChange={(e) =>
-                  updateSelected({ width: Math.round(Number(e.target.value)) })
-                }
-                className="w-12 text-xs text-center outline-none bg-transparent"
-              />
-            </div>
-            <div className="flex items-center h-8 border rounded-md px-2 bg-white gap-2">
-              <MoveVertical className="h-3 w-3 text-gray-400 rotate-90" />
-              <input
-                type="number"
-                value={selectedObject.height}
-                onChange={(e) =>
-                  updateSelected({
-                    height: Math.round(Number(e.target.value)),
-                  })
-                }
-                className="w-12 text-xs text-center outline-none bg-transparent"
-              />
-            </div>
-          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                size="icon"
+                variant={selectedObject.blur ? "secondary" : "ghost"}
+                className={`h-8 w-8 rounded-sm`}
+                title="Blur Effects"
+              >
+                <Activity className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-4" sideOffset={5}>
+              <div className="flex flex-col gap-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-medium text-gray-500">
+                    <span>Blur Amount</span>
+                    <span>{selectedObject.blur || 0}px</span>
+                  </div>
+                  <FancySlider
+                    value={selectedObject.blur || 0}
+                    min={0}
+                    max={50}
+                    step={1}
+                    onChange={(val) => updateSelected({ blur: val })}
+                    label={""}
+                  />
+                </div>
+
+                {selectedObject.type === "rect" && (
+                  <>
+                    <div className="h-px w-full bg-gray-300 mx-1"></div>
+                    <Tabs
+                      value={
+                        (selectedObject as any).isLiquid
+                          ? "liquid"
+                          : (selectedObject as any).isGlass
+                          ? "frosted"
+                          : "none"
+                      }
+                      onValueChange={(val) => {
+                        if (val === "liquid") {
+                          updateSelected({
+                            isLiquid: true,
+                            isGlass: false,
+                            // Auto-apply Liquid Shadow preset
+                            shadow: {
+                              color: "#00000033",
+                              blur: 24,
+                              x: 0,
+                              y: 6,
+                            },
+                            opacity: 1,
+                          });
+                        } else if (val === "frosted") {
+                          updateSelected({
+                            isGlass: true,
+                            isLiquid: false,
+                            // Auto-apply Glass Shadow preset
+                            shadow: {
+                              color: "#0000005E",
+                              blur: 32,
+                              x: 0,
+                              y: 8,
+                            },
+                            opacity: 1,
+                          });
+                        } else {
+                          updateSelected({
+                            isGlass: false,
+                            isLiquid: false,
+                            blur: 0,
+                            shadow: null,
+                            opacity: 1,
+                          });
+                        }
+                      }}
+                      className="w-full"
+                    >
+                      <TabsList className="grid w-full grid-cols-3 h-8">
+                        <TabsTrigger value="none" className="text-xs px-1">
+                          None
+                        </TabsTrigger>
+                        <TabsTrigger value="frosted" className="text-xs px-1">
+                          Frost
+                        </TabsTrigger>
+                        <TabsTrigger value="liquid" className="text-xs px-1">
+                          Liquid
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                    {(selectedObject as any).isLiquid && (
+                      <div className="space-y-4 pt-2 border-t mt-2">
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs font-medium text-gray-500">
+                            <span>Noise Freq</span>
+                            <span>
+                              {(
+                                (selectedObject as any).liquidNoiseFreq ?? 0.008
+                              ).toFixed(3)}
+                            </span>
+                          </div>
+                          <FancySlider
+                            value={
+                              (selectedObject as any).liquidNoiseFreq ?? 0.008
+                            }
+                            min={0}
+                            max={0.02}
+                            step={0.001}
+                            onChange={(val) =>
+                              updateSelected({ liquidNoiseFreq: val })
+                            }
+                            label=""
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs font-medium text-gray-500">
+                            <span>Distortion</span>
+                            <span>
+                              {(selectedObject as any).liquidDistortion ?? 77}
+                            </span>
+                          </div>
+                          <FancySlider
+                            value={
+                              (selectedObject as any).liquidDistortion ?? 77
+                            }
+                            min={0}
+                            max={200}
+                            step={1}
+                            onChange={(val) =>
+                              updateSelected({ liquidDistortion: val })
+                            }
+                            label=""
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
         </>
       )}
 
-      {/* ================= COMMON ROTATION & CLOSE ================= */}
+      {/* ================= COMMON DIMENSIONS & ROTATION ================= */}
+      <div className="h-6 w-px bg-gray-300 mx-1"></div>
+
+      {/* Dimensions (Rect/Image Only) */}
+      {(selectedObject.type === "rect" || selectedObject.type === "image") && (
+        <div className="flex items-center gap-2">
+          <div className="flex items-center h-8 border rounded-md px-2 bg-white gap-2">
+            <MoveVertical className="h-3 w-3 text-gray-400" />
+            <input
+              type="number"
+              value={selectedObject.width}
+              onChange={(e) =>
+                updateSelected({ width: Math.round(Number(e.target.value)) })
+              }
+              className="w-12 text-xs text-center outline-none bg-transparent"
+            />
+          </div>
+          <div className="flex items-center h-8 border rounded-md px-2 bg-white gap-2">
+            <MoveVertical className="h-3 w-3 text-gray-400 rotate-90" />
+            <input
+              type="number"
+              value={selectedObject.height}
+              onChange={(e) =>
+                updateSelected({ height: Math.round(Number(e.target.value)) })
+              }
+              className="w-12 text-xs text-center outline-none bg-transparent"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Rotation (All Objects) */}
       <div className="flex items-center h-8 border rounded-md px-2 bg-white gap-1 ml-2">
         <RotateCw className="h-3 w-3 text-gray-400" />
         <input
@@ -471,6 +805,7 @@ export const Toolbar = ({
 
       <div className="h-6 w-px bg-gray-300 mx-1"></div>
 
+      {/* Close Button */}
       <Button
         variant="ghost"
         size="icon"

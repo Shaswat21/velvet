@@ -108,13 +108,10 @@ export const CanvasArea = ({
     ctx.stroke();
   }, [currentPath, isDrawing, tool, width, height, zoomScale]);
 
-  // --- BACKGROUND LOGIC ---
-
   const handleSetBackground = (newBgId: string) => {
-    // Properties for the new background
     const bgProps = {
       isBackground: true,
-      isLocked: false, // Per your request: Unlocked initially
+      isLocked: false,
       x: 0,
       y: 0,
       width: width,
@@ -122,27 +119,19 @@ export const CanvasArea = ({
       rotation: 0,
     };
 
-    // Create a copy of objects to modify
     let newObjects = [...objects];
-
-    // 1. Remove ANY existing background first (Replace Logic)
     const existingBg = newObjects.find((o) => (o as any).isBackground);
     if (existingBg) {
       newObjects = newObjects.filter((o) => o.id !== existingBg.id);
     }
 
-    // 2. Find the object we want to make background
     const targetIndex = newObjects.findIndex((o) => o.id === newBgId);
     if (targetIndex === -1) return;
 
-    // 3. Update its properties
     const targetObj = { ...newObjects[targetIndex], ...bgProps };
+    newObjects.splice(targetIndex, 1);
+    newObjects.unshift(targetObj);
 
-    // 4. MOVE TO INDEX 0 (This fixes the visual stacking order!)
-    newObjects.splice(targetIndex, 1); // Remove from current position
-    newObjects.unshift(targetObj); // Add to the bottom of the stack
-
-    // 5. Save State
     setObjects(newObjects);
     setSelectedId([]);
   };
@@ -153,9 +142,6 @@ export const CanvasArea = ({
     const newX = (width - newW) / 2;
     const newY = (height - newH) / 2;
 
-    // When detaching, we just update properties.
-    // It stays at index 0 (bottom) unless you want to move it to top.
-    // If you want it to pop to top, use the same splice/push logic here.
     updateObject(id, {
       isBackground: false,
       isLocked: false,
@@ -173,7 +159,6 @@ export const CanvasArea = ({
       : null;
   const isSelectedBackground =
     selectedObject && (selectedObject as any).isBackground;
-
   const hasExistingBackground = objects.some((o) => (o as any).isBackground);
 
   return (
@@ -217,7 +202,6 @@ export const CanvasArea = ({
                 className="absolute top-0 left-0 w-full h-full pointer-events-none"
               />
 
-              {/* Guides */}
               {guides.map((g, i) => (
                 <div
                   key={i}
@@ -254,11 +238,14 @@ export const CanvasArea = ({
                 {objects.map((obj) => {
                   const isSelected = selectedIds.includes(obj.id);
                   const isDraggingItem = dragTarget?.id === obj.id;
-                  const showHandles = isSelected && !(obj as any).isBackground;
+
+                  // FIX: Pass true selection state, but control handle visibility via prop
+                  const isBackground = (obj as any).isBackground;
 
                   const commonProps = {
                     zoom: zoom[0],
-                    isSelected: showHandles,
+                    isSelected: isSelected, // Pass TRUE even for background
+                    hideResizeHandles: isBackground, // Explicitly hide handles for background
                     tool,
                     isDragging: isDraggingItem,
                     setDragTarget,
@@ -333,7 +320,6 @@ export const CanvasArea = ({
                   return null;
                 })}
 
-                {/* Visual Helpers */}
                 {isDrawing && tool === "pen" && (
                   <canvas
                     ref={ghostCanvasRef}
@@ -380,6 +366,7 @@ export const CanvasArea = ({
           </ContextMenuTrigger>
 
           <ContextMenuContent>
+            {/* ... context menu content ... */}
             {selectedIds.length === 1 && isSelectedBackground ? (
               <>
                 <ContextMenuItem
@@ -387,7 +374,6 @@ export const CanvasArea = ({
                 >
                   <Minimize className="w-4 h-4 mr-2" /> Detach from Background
                 </ContextMenuItem>
-
                 <ContextMenuItem onClick={() => onToggleLock(selectedIds[0])}>
                   {selectedObject?.isLocked ? (
                     <>
@@ -423,6 +409,7 @@ export const CanvasArea = ({
                       <ContextMenuSeparator />
                     </>
                   )}
+                {/* ... other items ... */}
                 {selectedIds.length > 0 && (
                   <ContextMenuItem onClick={onDuplicate}>
                     Duplicate

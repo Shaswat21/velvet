@@ -1,5 +1,12 @@
 export type ToolType = "select" | "hand" | "rect" | "pen";
 
+export interface Shadow {
+  color: string;
+  blur: number;
+  x: number;
+  y: number;
+}
+
 export interface BaseObject {
   id: string;
   type: "text" | "rect" | "image" | "group" | "path";
@@ -9,6 +16,8 @@ export interface BaseObject {
   height: number;
   rotation: number;
   isLocked?: boolean;
+  blur?: number;
+  opacity: number;
 }
 
 export interface TextObject extends BaseObject {
@@ -34,13 +43,17 @@ export interface RectObject extends BaseObject {
   strokeColor: string;
   strokeWidth: number;
   borderRadius: number;
+  isGlass?: boolean;
+  isLiquid?: boolean;
+  shadow?: Shadow | null;
+  liquidNoiseFreq?: number;
+  liquidDistortion?: number;
 }
 
 export interface ImageObject extends BaseObject {
   type: "image";
   src: string;
   borderRadius: number;
-  opacity: number;
   strokeColor: string;
   strokeWidth: number;
   imageX?: number;

@@ -257,6 +257,7 @@ export const useDesignBoard = (
       textTransform: "none",
       letterSpacing: 0,
       lineHeight: 1.2,
+      opacity: 1,
     };
     const finalObjects = [...localObjects, newText];
     setObjects(finalObjects, true);
@@ -491,6 +492,7 @@ export const useDesignBoard = (
         strokeColor: "#000000",
         strokeWidth: 2,
         borderRadius: 0,
+        opacity: 1,
       });
       return;
     }
@@ -532,257 +534,20 @@ export const useDesignBoard = (
     // }
     if (resizingTarget) {
       e.preventDefault();
-      const obj = localObjects.find((o) => o.id === resizingTarget.id);
+      const obj = objects.find((o) => o.id === resizingTarget.id);
       if (!obj || obj.isLocked) return;
 
-      const {
-        startX,
-        startY,
-        startW,
-        startH,
-        startXPos,
-        startYPos,
-        direction,
-        lockAspectRatio,
-        isCrop,
-        metaData,
-        startImgX,
-        startImgY,
-        startFontSize,
-      } = resizingTarget;
-
-      const deltaX = (e.pageX - startX) / currentZoom;
-      const deltaY = (e.pageY - startY) / currentZoom;
-
-      let newX = startXPos;
-      let newY = startYPos;
-      let newW = startW;
-      let newH = startH;
-
-      // --- 1. Calculate Proposed Wrapper Dimensions ---
-      if (direction.includes("e")) newW = startW + deltaX;
-      else if (direction.includes("w")) {
-        newW = startW - deltaX;
-        newX = startXPos + deltaX;
-      }
-      if (direction.includes("s")) newH = startH + deltaY;
-      else if (direction.includes("n")) {
-        newH = startH - deltaY;
-        newY = startYPos + deltaY;
-      }
-
-      // --- 2. STATIONARY CROP LOGIC ---
-      if (isCrop && obj.type === "image" && metaData) {
-        const baseW = metaData.width || startW;
-        const baseH = metaData.height || startH;
-
-        // A. Calculate the FIXED World Center of the Image
-        // WrapperCenter + (Offset% * BaseSize) = ImageCenter
-        const startWrapperCx = startXPos + startW / 2;
-        const startWrapperCy = startYPos + startH / 2;
-
-        const fixedImageWorldCx = startWrapperCx + startImgX * baseW;
-        const fixedImageWorldCy = startWrapperCy + startImgY * baseH;
-
-        // B. Calculate Image World Boundaries (The hard limits for the wrapper)
-        const imgWorldLeft = fixedImageWorldCx - baseW / 2;
-        const imgWorldRight = fixedImageWorldCx + baseW / 2;
-        const imgWorldTop = fixedImageWorldCy - baseH / 2;
-        const imgWorldBottom = fixedImageWorldCy + baseH / 2;
-
-        // C. Apply Constraints (Clamp Wrapper edges to Image edges)
-        // Min size check (10px) happens implicitly via clamps if logic is sound,
-        // but explicit 10px check is safer.
-
-        if (direction.includes("w")) {
-          // Dragging Left Edge: Cannot go left of ImageLeft
-          if (newX < imgWorldLeft) {
-            newX = imgWorldLeft;
-            newW = startXPos + startW - newX; // Recalculate width based on clamped X
-          }
-          // Max width constraint (cannot drag left past right edge - minSize)
-          if (newW < 10) {
-            newW = 10;
-            newX = startXPos + startW - 10;
-          }
-        }
-
-        if (direction.includes("e")) {
-          // Dragging Right Edge: Cannot go right of ImageRight
-          if (newX + newW > imgWorldRight) {
-            newW = imgWorldRight - newX;
-          }
-          if (newW < 10) newW = 10;
-        }
-
-        if (direction.includes("n")) {
-          // Dragging Top Edge
-          if (newY < imgWorldTop) {
-            newY = imgWorldTop;
-            newH = startYPos + startH - newY;
-          }
-          if (newH < 10) {
-            newH = 10;
-            newY = startYPos + startH - 10;
-          }
-        }
-
-        if (direction.includes("s")) {
-          // Dragging Bottom Edge
-          if (newY + newH > imgWorldBottom) {
-            newH = imgWorldBottom - newY;
-          }
-          if (newH < 10) newH = 10;
-        }
-
-        // D. Back-Calculate New Internal Offsets to maintain Stationary Position
-        // We know: NewWrapperCx + (NewOffset * BaseW) = FixedImageWorldCx
-        // So: NewOffset = (FixedImageWorldCx - NewWrapperCx) / BaseW
-
-        const newWrapperCx = newX + newW / 2;
-        const newWrapperCy = newY + newH / 2;
-
-        const newImgX = (fixedImageWorldCx - newWrapperCx) / baseW;
-        const newImgY = (fixedImageWorldCy - newWrapperCy) / baseH;
-
-        updateObject(resizingTarget.id, {
-          x: newX,
-          y: newY,
-          width: newW,
-          height: newH,
-          imageX: newImgX,
-          imageY: newImgY,
-        });
-        return;
-      }
-
-      const mouseX = e.pageX;
-      const mouseY = e.pageY;
-      const dxWorld = (mouseX - resizingTarget.startX) / currentZoom;
-      const dyWorld = (mouseY - resizingTarget.startY) / currentZoom;
-      const angleRad = (obj.rotation * Math.PI) / 180;
-      const cos = Math.cos(-angleRad);
-      const sin = Math.sin(-angleRad);
-      const dxLocal = dxWorld * cos - dyWorld * sin;
-      const dyLocal = dxWorld * sin + dyWorld * cos;
-      let newWidth = startW;
-      let newHeight = startH;
-      if (direction.includes("e")) newWidth = Math.max(10, startW + dxLocal);
-      else if (direction.includes("w"))
-        newWidth = Math.max(10, startW - dxLocal);
-      if (direction.includes("s")) newHeight = Math.max(10, startH + dyLocal);
-      else if (direction.includes("n"))
-        newHeight = Math.max(10, startH - dyLocal);
-
-      let fontSizeUpdate = {};
-      if (obj.type === "text" && direction.length === 2) {
-        const scale = newWidth / startW;
-        newHeight = startH * scale;
-        if (startFontSize)
-          fontSizeUpdate = { fontSize: Math.max(1, startFontSize * scale) };
-      }
-
-      // --- 3. Standard Resize (Non-Crop) ---
-      // Apply Aspect Lock
-      if (lockAspectRatio && !isCrop) {
-        const aspectRatio = startW / startH;
-        if (direction.includes("e") || direction.includes("w")) {
-          const targetH = newW / aspectRatio;
-          if (direction.includes("n")) newY = startYPos + (startH - targetH);
-          newH = targetH;
-        } else {
-          const targetW = newH * aspectRatio;
-          if (direction.includes("w")) newX = startXPos + (startW - targetW);
-          newW = targetW;
-        }
-      }
-
-      // Standard Min Size
-      if (newW < 10) {
-        newW = 10;
-        if (direction.includes("w")) newX = startXPos + startW - 10;
-      }
-      if (newH < 10) {
-        newH = 10;
-        if (direction.includes("n")) newY = startYPos + startH - 10;
-      }
-
-      const canvasWidth = containerRef.current?.clientWidth || 800;
-      const canvasHeight = containerRef.current?.clientHeight || 600;
-
-      const snapResult = calculateSnapping(
+      const newGeo = calculateResize(
         obj,
-        newX,
-        newY,
-        localObjects,
-        canvasWidth,
-        canvasHeight,
-        [obj.id],
-        5, // Threshold
-        newW, // Pass the NEW Width
-        newH,
-        direction
+        e.pageX,
+        e.pageY,
+        resizingTarget,
+        zoom[0] / 100
       );
 
-      // Apply Snap Offsets to position
-      let { snapDx, snapDy } = snapResult;
-
-      // 6. Filter Snaps (Stabilization)
-      // if (direction === "w" || direction === "e") snapDy = 0;
-      // if (direction === "n" || direction === "s") snapDx = 0;
-
-      setGuides(snapResult.activeGuides);
-
-      // 7. Apply Snaps
-      // Horizontal
-      if (snapDx !== 0) {
-        if (direction.includes("w")) {
-          // Left Handle: Snap X, Adjust Width
-          newX += snapDx;
-          newW -= snapDx;
-        } else if (direction.includes("e")) {
-          // Right Handle: Snap Width Only
-          newW += snapDx;
-        } else {
-          // Center Handle (Vertical resize) or Corner: Move X
-          newX += snapDx;
-        }
-      }
-
-      // Vertical
-      if (snapDy !== 0) {
-        if (direction.includes("n")) {
-          // Top Handle: Snap Y, Adjust Height
-          newY += snapDy;
-          newH -= snapDy;
-        } else if (direction.includes("s")) {
-          // Bottom Handle: Snap Height Only
-          newH += snapDy;
-        } else {
-          // Center Handle (Horizontal resize) or Corner: Move Y
-          newY += snapDy;
-        }
-      }
-
-      if (obj.type === "text") {
-        updateObject(resizingTarget.id, {
-          x: newX,
-          y: newY,
-          width: newW,
-          ...fontSizeUpdate,
-        });
-        return;
-      }
-
-      updateObject(resizingTarget.id, {
-        x: newX,
-        y: newY,
-        width: newW,
-        height: newH,
-      });
+      updateObject(resizingTarget.id, newGeo);
       return;
     }
-
     // 6. DRAG WITH SNAPPING
     if (dragTarget) {
       e.preventDefault();
