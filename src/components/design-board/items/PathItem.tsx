@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
 import type { PathObject, ToolType } from "@/lib/types";
-import { TransformWrapper } from "./TransformWrapper"; // Import the existing wrapper
+import { TransformWrapper } from "./TransformWrapper";
 
 interface PathItemProps {
   obj: PathObject;
   zoom: number;
-  tool: ToolType; // Added tool prop
+  tool: ToolType;
   isSelected: boolean;
   onMouseDown: (e: React.MouseEvent) => void;
   innerRef: (el: HTMLDivElement | null) => void;
@@ -22,6 +22,7 @@ export const PathItem = ({
   innerRef,
   setResizingTarget,
   setRotatingTarget,
+  ...props
 }: PathItemProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const zoomScale = zoom / 100;
@@ -35,22 +36,22 @@ export const PathItem = ({
 
     // Handle High DPI
     const scale = window.devicePixelRatio || 1;
-    
+
     // Set logical dimensions matches object size * zoom
     canvas.width = obj.width * zoomScale * scale;
     canvas.height = obj.height * zoomScale * scale;
-    
+
     ctx.scale(scale, scale);
 
     // Clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
+
     // Style
     ctx.strokeStyle = obj.strokeColor;
     ctx.lineWidth = obj.strokeWidth * zoomScale;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.globalAlpha = obj.opacity;
+    ctx.globalAlpha = obj.opacity ?? 1;
 
     // Draw
     if (obj.points.length > 1) {
@@ -73,17 +74,18 @@ export const PathItem = ({
       onMouseDown={onMouseDown}
       setResizingTarget={setResizingTarget}
       setRotatingTarget={setRotatingTarget}
-      // Note: If TransformWrapper doesn't support innerRef in your version, 
-      // you might need to wrap this in a fragment or check the wrapper definition.
-      // Assuming standard implementation:
-      // pointerEvents="auto"
+      {...props}
     >
-      {/* We need to attach the innerRef to something solid if TransformWrapper doesn't forward it. 
-          However, usually the wrapper IS the element. 
-          For now, we pass the canvas as the child. */}
-      <div 
-        ref={innerRef} 
-        style={{ width: "100%", height: "100%" }}
+      <div
+        ref={innerRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          // Apply Mirroring
+          transform: `scale(${obj.flipX ? -1 : 1}, ${obj.flipY ? -1 : 1})`,
+          // Apply blur
+          filter: obj.blur ? `blur(${obj.blur}px)` : "none",
+        }}
       >
         <canvas
           ref={canvasRef}

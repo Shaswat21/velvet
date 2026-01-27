@@ -33,9 +33,10 @@ import {
   Droplets,
   RotateCw,
   Activity,
-  Ghost,
-  Waves,
   BoxSelect,
+  // --- NEW ICONS ---
+  FlipHorizontal,
+  FlipVertical,
 } from "lucide-react";
 import { ColorPicker } from "./ui/ColorPicker";
 import { FONTS, HIGHLIGHT_COLORS } from "@/lib/constants";
@@ -397,7 +398,9 @@ export const Toolbar = ({
               <Button
                 size="icon"
                 variant={selectedObject.shadow ? "secondary" : "ghost"}
-                className={`h-8 w-8 rounded-sm`}
+                className={`h-8 w-8 rounded-sm ${
+                  selectedObject.shadow ? "bg-blue-100 text-blue-600" : ""
+                }`}
                 title="Drop Shadow"
               >
                 <BoxSelect className="h-4 w-4" />
@@ -405,7 +408,7 @@ export const Toolbar = ({
             </PopoverTrigger>
             <PopoverContent className="w-72 p-4" sideOffset={5}>
               <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between border-b pb-2">
                   <span className="text-sm font-semibold">Drop Shadow</span>
                   <Toggle
                     pressed={!!selectedObject.shadow}
@@ -445,13 +448,14 @@ export const Toolbar = ({
                       }
                     }}
                     size="sm"
+                    className="h-6 data-[state=on]:bg-blue-600 data-[state=on]:text-white"
                   >
                     {selectedObject.shadow ? "On" : "Off"}
                   </Toggle>
                 </div>
 
                 {selectedObject.shadow && (
-                  <div className="space-y-3 border-t pt-3">
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-500">Color</span>
                       <input
@@ -534,6 +538,64 @@ export const Toolbar = ({
         </>
       )}
 
+      {/* ================= PATH (DRAW) TOOLBAR ================= */}
+      {selectedObject.type === "path" && (
+        <>
+          <div className="flex items-center gap-2 mr-2">
+            <span className="text-[10px] uppercase font-bold text-gray-400">
+              Stroke
+            </span>
+            <ColorPicker
+              value={(selectedObject as any).strokeColor}
+              onChange={(val) => updateSelected({ strokeColor: val })}
+              title="Stroke Color"
+            />
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={(selectedObject as any).strokeWidth}
+              onChange={(e) =>
+                updateSelected({ strokeWidth: Number(e.target.value) })
+              }
+              className="w-10 h-8 text-xs text-center border rounded-md"
+              title="Stroke Width"
+            />
+          </div>
+
+          <div className="h-6 w-px bg-gray-300 mx-1"></div>
+
+          <div className="flex items-center bg-gray-100 p-0.5 rounded-md border gap-0.5">
+            <Button
+              size="icon"
+              variant={(selectedObject as any).flipX ? "secondary" : "ghost"}
+              className={`h-7 w-7 rounded-sm ${
+                (selectedObject as any).flipX ? "bg-blue-200 text-blue-700" : ""
+              }`}
+              onClick={() =>
+                updateSelected({ flipX: !(selectedObject as any).flipX })
+              }
+              title="Flip Horizontally"
+            >
+              <FlipHorizontal className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant={(selectedObject as any).flipY ? "secondary" : "ghost"}
+              className={`h-7 w-7 rounded-sm ${
+                (selectedObject as any).flipY ? "bg-blue-200 text-blue-700" : ""
+              }`}
+              onClick={() =>
+                updateSelected({ flipY: !(selectedObject as any).flipY })
+              }
+              title="Flip Vertically"
+            >
+              <FlipVertical className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </>
+      )}
+
       {/* ================= IMAGE TOOLBAR ================= */}
       {selectedObject.type === "image" && (
         <>
@@ -584,8 +646,8 @@ export const Toolbar = ({
             size="icon"
             variant={selectedObject.opacity < 1 ? "secondary" : "ghost"}
             className={`h-8 w-8 rounded-sm ${
-              rectObj?.isLiquid ? "opacity-40 pointer-events-none" : ""
-            }`}
+              selectedObject.opacity < 1 ? "bg-blue-100 text-blue-600" : ""
+            } ${rectObj?.isLiquid ? "opacity-40 pointer-events-none" : ""}`}
             title="Opacity"
           >
             <Droplets className="h-4 w-4" />
@@ -620,7 +682,9 @@ export const Toolbar = ({
               <Button
                 size="icon"
                 variant={selectedObject.blur ? "secondary" : "ghost"}
-                className={`h-8 w-8 rounded-sm`}
+                className={`h-8 w-8 rounded-sm ${
+                  selectedObject.blur ? "bg-blue-100 text-blue-600" : ""
+                }`}
                 title="Blur Effects"
               >
                 <Activity className="h-4 w-4" />
@@ -659,7 +723,6 @@ export const Toolbar = ({
                           updateSelected({
                             isLiquid: true,
                             isGlass: false,
-                            // Auto-apply Liquid Shadow preset
                             shadow: {
                               color: "#00000033",
                               blur: 24,
@@ -672,7 +735,6 @@ export const Toolbar = ({
                           updateSelected({
                             isGlass: true,
                             isLiquid: false,
-                            // Auto-apply Glass Shadow preset
                             shadow: {
                               color: "#0000005E",
                               blur: 32,
@@ -762,8 +824,10 @@ export const Toolbar = ({
       {/* ================= COMMON DIMENSIONS & ROTATION ================= */}
       <div className="h-6 w-px bg-gray-300 mx-1"></div>
 
-      {/* Dimensions (Rect/Image Only) */}
-      {(selectedObject.type === "rect" || selectedObject.type === "image") && (
+      {/* Dimensions (Rect/Image/Path Only) */}
+      {(selectedObject.type === "rect" ||
+        selectedObject.type === "image" ||
+        selectedObject.type === "path") && (
         <div className="flex items-center gap-2">
           <div className="flex items-center h-8 border rounded-md px-2 bg-white gap-2">
             <MoveVertical className="h-3 w-3 text-gray-400" />

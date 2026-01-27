@@ -40,11 +40,7 @@ export const ImageItem = ({
   const imgScale = (obj as any).imageScale ?? 1;
 
   // --- HELPER: Calculate Constraints & Update Scale ---
-  // This function ensures that whenever we zoom, we also check if the
-  // current pan position (imgX/imgY) is still valid. If zooming out
-  // makes the image smaller than the offset, we pull it back (clamp).
   const updateScaleWithConstraints = (newScale: number) => {
-    // 1. Calculate Expected Dimensions at New Scale
     let currentImgW, currentImgH;
 
     if (!naturalRatio) {
@@ -53,7 +49,6 @@ export const ImageItem = ({
     } else {
       const containerRatio = obj.width / obj.height;
       let baseW, baseH;
-      // Logic matches "cover" or "contain" base calculation
       if (containerRatio > naturalRatio) {
         baseW = obj.width;
         baseH = obj.width / naturalRatio;
@@ -65,15 +60,12 @@ export const ImageItem = ({
       currentImgH = baseH * newScale;
     }
 
-    // 2. Calculate Limits based on new dimensions
     const ratioW = obj.width / currentImgW;
     const ratioH = obj.height / currentImgH;
 
-    // The maximum % shift allowed in any direction
     const limitX = Math.max(0, (1 - ratioW) / 2);
     const limitY = Math.max(0, (1 - ratioH) / 2);
 
-    // 3. Clamp current imgX/imgY to new limits
     let newX = imgX;
     let newY = imgY;
 
@@ -82,7 +74,6 @@ export const ImageItem = ({
     if (newY > limitY) newY = limitY;
     if (newY < -limitY) newY = -limitY;
 
-    // 4. Update Everything
     updateObject(obj.id, {
       imageScale: newScale,
       imageX: newX,
@@ -90,9 +81,6 @@ export const ImageItem = ({
     } as any);
   };
 
-  // --- REFS FOR STABLE EVENT HANDLERS ---
-  // We pass the fresh update function to the ref so the wheel listener
-  // (which is bound once) can always call the latest logic with correct closures.
   const stateRef = useRef({
     imgScale,
     updateScaleWithConstraints,
@@ -103,14 +91,14 @@ export const ImageItem = ({
     stateRef.current = { imgScale, updateScaleWithConstraints, isEditing };
   }, [imgScale, updateScaleWithConstraints, isEditing]);
 
-  // --- EXIT EDIT MODE ON DESELECT ---
+  // Exit edit mode on deselect
   useEffect(() => {
     if (!props.isSelected && isEditing) {
       setIsEditing(false);
     }
   }, [props.isSelected, isEditing]);
 
-  // --- CTRL + SCROLL TO ZOOM ---
+  // Ctrl + Scroll to Zoom
   useEffect(() => {
     if (!isEditing) return;
 
@@ -126,9 +114,8 @@ export const ImageItem = ({
         const delta = -e.deltaY;
 
         let newScale = currentScale + delta * sensitivity;
-        newScale = Math.min(Math.max(1, newScale), 5); // Max zoom 5x
+        newScale = Math.min(Math.max(1, newScale), 5);
 
-        // Use the constrained updater
         updater(newScale);
       }
     };
@@ -144,7 +131,6 @@ export const ImageItem = ({
     };
   }, [isEditing]);
 
-  // Calculate pixel size for rendering
   const getRenderedDimensions = () => {
     if (!naturalRatio) return { width: obj.width, height: obj.height };
     const containerRatio = obj.width / obj.height;
@@ -199,7 +185,7 @@ export const ImageItem = ({
     setDragStart({ x: e.clientX, y: e.clientY });
   };
 
-  // --- PANNING LOGIC ---
+  // Panning Logic
   useEffect(() => {
     if (!isEditing || !dragStart) return;
 
@@ -257,7 +243,7 @@ export const ImageItem = ({
     naturalRatio,
   ]);
 
-  // Click outside exit
+  // Click outside to exit
   useEffect(() => {
     if (!isEditing) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -268,9 +254,7 @@ export const ImageItem = ({
     return () => window.removeEventListener("mousedown", handleClickOutside);
   }, [isEditing]);
 
-  // --- SLIDER HANDLER ---
   const handleScaleChange = (val: number[]) => {
-    // Use the constrained updater here too
     updateScaleWithConstraints(val[0]);
   };
 
@@ -291,6 +275,41 @@ export const ImageItem = ({
     pointerEvents: "none",
     userSelect: "none",
     objectFit: obj.isBackground ? "cover" : "fill",
+  };
+
+  // --- CONTROLS POSITIONING LOGIC ---
+  // Calculates the position to keep the controls at the visual "World Bottom"
+  // even when the object is rotated.
+  const getControlsStyle = () => {
+    const angleRad = (obj.rotation * Math.PI) / 180;
+
+    // 1. Calculate the Visual Height of the Rotated Bounding Box
+    // Use zoomFactor scaled dimensions for pixel accuracy on screen
+    const w = obj.width * zoomFactor;
+    const h = obj.height * zoomFactor;
+    const aabbHeight =
+      Math.abs(w * Math.sin(angleRad)) + Math.abs(h * Math.cos(angleRad));
+
+    // 2. Define offset from the center (half bounding box + spacing)
+    const spacing = 60; // Distance below the bounding box
+    const distFromCenter = aabbHeight / 2 + spacing;
+
+    // 3. Rotate the World Vector (0, distFromCenter) backwards into Local Space
+    // localX = x*cos(-a) - y*sin(-a) = 0 - dist*(-sin(a)) = dist*sin(a)
+    // localY = x*sin(-a) + y*cos(-a) = 0 + dist*cos(a) = dist*cos(a)
+    const localX = distFromCenter * Math.sin(angleRad);
+    const localY = distFromCenter * Math.cos(angleRad);
+
+    return {
+      position: "absolute" as const,
+      top: "50%",
+      left: "50%",
+      // Move to calculated local position, then Counter-Rotate the UI itself
+      transform: `translate(-50%, -50%) translate(${localX}px, ${localY}px) rotate(${-obj.rotation}deg)`,
+      zIndex: 60,
+      width: "12rem", // w-48
+      pointerEvents: "auto" as const,
+    };
   };
 
   return (
@@ -343,7 +362,10 @@ export const ImageItem = ({
         </div>
 
         {!obj.isLocked && isEditing && (
-          <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 z-60 w-48 image-edit-controls">
+          <div
+            className="image-edit-controls"
+            style={getControlsStyle()} // <-- Applied Corrected Style Here
+          >
             <div
               className="bg-white rounded-md shadow-xl border p-3"
               onMouseDown={(e) => e.stopPropagation()}
@@ -357,7 +379,7 @@ export const ImageItem = ({
                 min={1}
                 max={5}
                 step={0.01}
-                value={[imgScale]} // Controlled component
+                value={[imgScale]}
                 onValueChange={handleScaleChange}
                 className="cursor-pointer"
               />

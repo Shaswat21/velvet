@@ -75,6 +75,8 @@ export interface PathObject extends BaseObject {
   strokeColor: string;
   strokeWidth: number;
   opacity: number;
+  flipX?: boolean;
+  flipY?: boolean;
 }
 
 export type CanvasObject =

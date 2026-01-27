@@ -12,9 +12,7 @@ import { LayersPanel } from "./LayersPanel";
 import { CanvasArea } from "./CanvasArea";
 import { useDesignBoard } from "@/hooks/useDesignBoard";
 import { type ExportOptions } from "./ExportDialog";
-import {
-  type ImageObject,
-} from "@/lib/types";
+import { type ImageObject } from "@/lib/types";
 import { ENABLE_DEV_MODE, VELVET_KEY } from "@/lib/constants";
 import { generateSVGString } from "@/lib/render";
 
@@ -384,6 +382,7 @@ export default function DesignBoard({
         handleDevImageUpload={
           ENABLE_DEV_MODE ? board.handleDevImageUpload : undefined
         }
+        handleClearSelection={board.handleClearSelection}
         handleDeleteSelected={board.handleDeleteSelected}
         selectedId={
           board.selectedIds.length === 1 ? board.selectedIds[0] : null
@@ -400,15 +399,17 @@ export default function DesignBoard({
         setIsLayersOpen={setIsLayersOpen}
       />
 
-      <Toolbar
-        selectedObject={board.singleSelectedObject}
-        updateSelected={(updates) =>
-          board.selectedIds.length === 1 &&
-          board.updateObject(board.selectedIds[0], updates, true)
-        }
-        handleCloseToolbar={handleCloseToolbar}
-        isClosingToolbar={isClosingToolbar}
-      />
+      {board.tool == "select" && (
+        <Toolbar
+          selectedObject={board.singleSelectedObject}
+          updateSelected={(updates) =>
+            board.selectedIds.length === 1 &&
+            board.updateObject(board.selectedIds[0], updates, true)
+          }
+          handleCloseToolbar={handleCloseToolbar}
+          isClosingToolbar={isClosingToolbar}
+        />
+      )}
 
       <CanvasArea
         containerRef={board.containerRef}

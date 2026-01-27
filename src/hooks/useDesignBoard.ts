@@ -399,6 +399,10 @@ export const useDesignBoard = (
     reader.readAsDataURL(file);
     e.target.value = "";
   };
+  const handleClearSelection = () => {
+    setSelectedIds([]);
+  };
+
   const handleDeleteSelected = () => {
     if (selectedIds.length > 0) {
       const finalObjects = localObjects.filter(
@@ -823,6 +827,7 @@ export const useDesignBoard = (
     handleGroup,
     handleUngroup,
     handleDuplicate,
+    handleClearSelection,
     handleDeleteSelected,
     handleStartRotation,
     handleAddText,

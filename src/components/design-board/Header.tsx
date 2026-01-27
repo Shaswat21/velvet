@@ -29,6 +29,7 @@ interface HeaderProps {
   handleAddText: () => void;
   handleAddImage: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleDevImageUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void; // <--- NEW PROP
+  handleClearSelection: () => void;
   handleDeleteSelected: () => void;
   selectedId: string | null;
   handleGroup?: () => void;
@@ -50,6 +51,7 @@ export const Header = ({
   handleAddText,
   handleAddImage,
   handleDevImageUpload,
+  handleClearSelection,
   handleDeleteSelected,
   selectedId,
   handleGroup,
@@ -87,7 +89,13 @@ export const Header = ({
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <span className="h-6 w-px bg-gray-200"></span>
-        <Tabs value={tool} onValueChange={(v) => setTool(v as ToolType)}>
+        <Tabs
+          value={tool}
+          onValueChange={(v) => {
+            setTool(v as ToolType);
+            handleClearSelection();
+          }}
+        >
           <TabsList className="grid w-48 grid-cols-4 h-9">
             <TabsTrigger value="select" className="h-7 p-0" title="Select">
               <MousePointer2 className="h-4 w-4" />
