@@ -34,7 +34,7 @@ export const Footer = ({
   };
 
   return (
-    <footer className="px-4 py-3 bg-white border-t flex items-center justify-end z-50 relative">
+    <footer className="px-4 py-3 bg-white border-t flex items-center justify-end z-40 relative">
       <div className="flex items-center gap-3">
         {/* Zoom Slider */}
         <Slider

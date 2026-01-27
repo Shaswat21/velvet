@@ -105,7 +105,7 @@ export const Toolbar = ({
   return (
     <div
       className={`
-          absolute top-18 left-[50%] translate-x-[-50%] bg-gray-50/95 backdrop-blur-sm border-b shadow-sm z-20 
+          absolute top-18 left-[50%] translate-x-[-50%] bg-gray-50/95 backdrop-blur-sm border-b shadow-sm z-11 
           flex items-center justify-center gap-2 p-2 
           rounded-lg
           transition-all duration-300 ease-in-out

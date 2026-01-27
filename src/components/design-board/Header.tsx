@@ -65,7 +65,7 @@ export const Header = ({
   const devInputRef = useRef<HTMLInputElement>(null); // <--- Ref for hidden dev input
 
   return (
-    <header className="grid grid-cols-3 items-center px-4 py-3 bg-white border-b shadow-sm z-30 h-16 relative">
+    <header className="grid grid-cols-3 items-center px-4 py-3 bg-white border-b shadow-sm z-9 h-16 relative">
       {/* STANDARD USER INPUT */}
       <input
         type="file"

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -11,8 +11,18 @@ import { RectItem } from "./items/RectItem";
 import { ImageItem } from "./items/ImageItem";
 import { GroupItem } from "./items/GroupItem";
 import { PathItem } from "./items/PathItem";
-import type { CanvasObject, ToolType } from "@/lib/types";
-import { LockIcon, Unlock, Maximize, Minimize, RefreshCcw } from "lucide-react";
+import { BackgroundRemover } from "./BackgroundRemover"; // <--- Import New Component
+import type { CanvasObject, ToolType, ImageObject } from "@/lib/types";
+import {
+  LockIcon,
+  Unlock,
+  Maximize,
+  Minimize,
+  RefreshCcw,
+  Wand2,
+  Copy,
+  Trash2,
+} from "lucide-react";
 import type { GuideLine } from "@/lib/utils/snappingUtils";
 
 interface CanvasAreaProps {
@@ -85,6 +95,18 @@ export const CanvasArea = ({
   const zoomScale = zoom[0] / 100;
   const ghostCanvasRef = useRef<HTMLCanvasElement>(null);
 
+  // --- BG REMOVER STATE ---
+  const [bgRemoveTarget, setBgRemoveTarget] = useState<ImageObject | null>(
+    null,
+  );
+
+  const handleApplyBgRemoval = (newSrc: string) => {
+    if (bgRemoveTarget) {
+      updateObject(bgRemoveTarget.id, { src: newSrc });
+    }
+    setBgRemoveTarget(null);
+  };
+
   useEffect(() => {
     const canvas = ghostCanvasRef.current;
     if (!canvas || !isDrawing || currentPath.length < 2 || tool !== "pen")
@@ -118,20 +140,15 @@ export const CanvasArea = ({
       height: height,
       rotation: 0,
     };
-
     let newObjects = [...objects];
     const existingBg = newObjects.find((o) => (o as any).isBackground);
-    if (existingBg) {
+    if (existingBg)
       newObjects = newObjects.filter((o) => o.id !== existingBg.id);
-    }
-
     const targetIndex = newObjects.findIndex((o) => o.id === newBgId);
     if (targetIndex === -1) return;
-
     const targetObj = { ...newObjects[targetIndex], ...bgProps };
     newObjects.splice(targetIndex, 1);
     newObjects.unshift(targetObj);
-
     setObjects(newObjects);
     setSelectedId([]);
   };
@@ -141,7 +158,6 @@ export const CanvasArea = ({
     const newH = height * 0.75;
     const newX = (width - newW) / 2;
     const newY = (height - newH) / 2;
-
     updateObject(id, {
       isBackground: false,
       isLocked: false,
@@ -165,15 +181,18 @@ export const CanvasArea = ({
     <main
       ref={containerRef as React.RefObject<HTMLDivElement>}
       onMouseDown={onMouseDown}
-      className={`flex-1 relative overflow-auto bg-gray-50 no-scrollbar z-10 ${
-        tool === "hand"
-          ? "cursor-grab"
-          : tool === "rect" || tool === "pen"
-          ? "cursor-crosshair"
-          : "cursor-default"
-      }`}
+      className={`flex-1 relative overflow-auto bg-gray-50 no-scrollbar z-10 ${tool === "hand" ? "cursor-grab" : tool === "rect" || tool === "pen" ? "cursor-crosshair" : "cursor-default"}`}
     >
       <style>{`.no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
+
+      {/* BG REMOVER MODAL */}
+      <BackgroundRemover
+        isOpen={!!bgRemoveTarget}
+        imageSrc={bgRemoveTarget?.src || ""}
+        onClose={() => setBgRemoveTarget(null)}
+        onApply={handleApplyBgRemoval}
+      />
+
       <div
         className="flex items-center justify-center min-w-full min-h-full bg-wrapper"
         style={{
@@ -238,14 +257,12 @@ export const CanvasArea = ({
                 {objects.map((obj) => {
                   const isSelected = selectedIds.includes(obj.id);
                   const isDraggingItem = dragTarget?.id === obj.id;
-
-                  // FIX: Pass true selection state, but control handle visibility via prop
                   const isBackground = (obj as any).isBackground;
 
                   const commonProps = {
                     zoom: zoom[0],
-                    isSelected: isSelected, // Pass TRUE even for background
-                    hideResizeHandles: isBackground, // Explicitly hide handles for background
+                    isSelected,
+                    hideResizeHandles: !!isBackground,
                     tool,
                     isDragging: isDraggingItem,
                     setDragTarget,
@@ -366,7 +383,22 @@ export const CanvasArea = ({
           </ContextMenuTrigger>
 
           <ContextMenuContent>
-            {/* ... context menu content ... */}
+            {/* NEW: Background Remover Item */}
+            {selectedIds.length === 1 &&
+              selectedObject?.type === "image" &&
+              !isSelectedBackground && (
+                <>
+                  <ContextMenuItem
+                    onClick={() =>
+                      setBgRemoveTarget(selectedObject as ImageObject)
+                    }
+                  >
+                    <Wand2 className="w-4 h-4 mr-2" /> Edit Background
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                </>
+              )}
+
             {selectedIds.length === 1 && isSelectedBackground ? (
               <>
                 <ContextMenuItem
@@ -409,10 +441,9 @@ export const CanvasArea = ({
                       <ContextMenuSeparator />
                     </>
                   )}
-                {/* ... other items ... */}
                 {selectedIds.length > 0 && (
                   <ContextMenuItem onClick={onDuplicate}>
-                    Duplicate
+                    <Copy className="w-4 h-4 mr-2" /> Duplicate
                   </ContextMenuItem>
                 )}
                 {selectedIds.length === 1 && (
@@ -438,7 +469,9 @@ export const CanvasArea = ({
                       Ungroup
                     </ContextMenuItem>
                   )}
-                <ContextMenuItem onClick={onDelete}>Delete</ContextMenuItem>
+                <ContextMenuItem onClick={onDelete}>
+                  <Trash2 className="w-4 h-4 mr-2" /> Delete
+                </ContextMenuItem>
               </>
             )}
           </ContextMenuContent>
