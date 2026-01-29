@@ -11,7 +11,7 @@ import { RectItem } from "./items/RectItem";
 import { ImageItem } from "./items/ImageItem";
 import { GroupItem } from "./items/GroupItem";
 import { PathItem } from "./items/PathItem";
-import { BackgroundRemover } from "./BackgroundRemover"; // <--- Import New Component
+import { BackgroundRemover } from "./BackgroundRemover";
 import type { CanvasObject, ToolType, ImageObject } from "@/lib/types";
 import {
   LockIcon,
@@ -175,6 +175,8 @@ export const CanvasArea = ({
       : null;
   const isSelectedBackground =
     selectedObject && (selectedObject as any).isBackground;
+  // Check if object is a sticker based on custom property
+  const isSelectedSticker = selectedObject && ((selectedObject as any).isSticker);
   const hasExistingBackground = objects.some((o) => (o as any).isBackground);
 
   return (
@@ -383,7 +385,7 @@ export const CanvasArea = ({
           </ContextMenuTrigger>
 
           <ContextMenuContent>
-            {/* NEW: Background Remover Item */}
+            {/* Background Remover Item */}
             {selectedIds.length === 1 &&
               selectedObject?.type === "image" &&
               !isSelectedBackground && (
@@ -393,7 +395,7 @@ export const CanvasArea = ({
                       setBgRemoveTarget(selectedObject as ImageObject)
                     }
                   >
-                    <Wand2 className="w-4 h-4 mr-2" /> Edit Background
+                    <Wand2 className="w-4 h-4 mr-2" /> Edit Image
                   </ContextMenuItem>
                   <ContextMenuSeparator />
                 </>
@@ -420,8 +422,10 @@ export const CanvasArea = ({
               </>
             ) : (
               <>
+                {/* Only allow setting background if it is NOT a sticker */}
                 {selectedIds.length === 1 &&
-                  selectedObject?.type === "image" && (
+                  selectedObject?.type === "image" &&
+                  !isSelectedSticker && (
                     <>
                       <ContextMenuItem
                         onClick={() => handleSetBackground(selectedIds[0])}

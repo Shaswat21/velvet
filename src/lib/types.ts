@@ -60,6 +60,9 @@ export interface ImageObject extends BaseObject {
   imageY?: number;
   imageScale?: number;
   isBackground?: boolean;
+  isSticker: boolean;
+  flipX?: boolean;
+  flipY?: boolean;
 }
 
 export interface GroupObject extends BaseObject {

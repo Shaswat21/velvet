@@ -32,7 +32,6 @@ const getRelativePos = (
   return { x, y };
 };
 
-// Updated signature to accept initial data
 export const useDesignBoard = (
   paper: PaperKey,
   orientation: Orientation,
@@ -61,7 +60,6 @@ export const useDesignBoard = (
   const [zoom, setZoom] = useState<number[]>([40]);
   const [tool, setTool] = useState<ToolType>("select");
 
-  // FIX 1: Initialize history with imported objects
   const {
     current: objects,
     saveHistory: pushHistory,
@@ -71,15 +69,12 @@ export const useDesignBoard = (
     canRedo,
   } = useHistory<CanvasObject[]>(initialObjects || []);
 
-  // FIX 2: Initialize local state with imported objects
   const [localObjects, setLocalObjects] = useState<CanvasObject[]>(
     initialObjects || [],
   );
 
-  // FIX 3: Initialize background color
   const [bgColor, setBgColor] = useState(initialBgColor || "#ffffff");
 
-  // Sync history state to local state when undo/redo occurs
   useEffect(() => {
     if (objects) setLocalObjects(objects);
   }, [objects]);
@@ -92,12 +87,10 @@ export const useDesignBoard = (
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [guides, setGuides] = useState<GuideLine[]>([]);
 
-  // Action Targets
   const [dragTarget, setDragTarget] = useState<{ id: string } | null>(null);
   const [resizingTarget, setResizingTarget] = useState<any>(null);
   const [rotatingTarget, setRotatingTarget] = useState<any>(null);
 
-  // Temp Visuals
   const [tempRect, setTempRect] = useState<RectObject | null>(null);
   const [selectionBox, setSelectionBox] = useState<{
     x: number;
@@ -113,7 +106,6 @@ export const useDesignBoard = (
   const width = orientation === "portrait" ? w : h;
   const height = orientation === "portrait" ? h : w;
 
-  /* --- HELPERS --- */
   const getPointerPos = (e: React.MouseEvent) => {
     if (!canvasRef.current) return { x: 0, y: 0 };
     return getRelativePos(e, canvasRef.current, zoom[0]);
@@ -142,7 +134,7 @@ export const useDesignBoard = (
     return { ...obj, id: newId };
   };
 
-  /* --- ACTIONS --- */
+  // --- ACTIONS ---
   const handleUndo = useCallback(() => {
     const prev = performUndo();
     if (prev) {
@@ -276,41 +268,33 @@ export const useDesignBoard = (
       img.src = originalSrc;
 
       img.onload = () => {
-        // 1. Create an off-screen canvas
         const canvas = document.createElement("canvas");
         canvas.width = img.width;
         canvas.height = img.height;
-
-        // 2. Draw the image onto the canvas
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
         ctx.drawImage(img, 0, 0);
-
-        // 3. Convert to WebP (Quality 0.0 - 1.0)
-        // If the browser doesn't support WebP, it usually falls back to PNG
         const webpSrc = canvas.toDataURL("image/webp", 0.8);
 
-        // 4. Calculate display dimensions (as per your original logic)
         const ratio = img.width / img.height;
         const w = 300;
         const h = 300 / ratio;
-
         const newId = Math.random().toString(36).substr(2, 9);
 
-        // 5. Create the object using the new 'webpSrc'
         const newImg: ImageObject = {
           id: newId,
           type: "image",
-          x: width / 2 - w / 2, // Ensure 'width' and 'height' variables exist in your scope
+          x: width / 2 - w / 2,
           y: height / 2 - h / 2,
           width: w,
           height: h,
           rotation: 0,
-          src: webpSrc, // <--- Using the converted WebP source
+          src: webpSrc,
           borderRadius: 0,
           opacity: 1,
           strokeColor: "transparent",
           strokeWidth: 0,
+          isSticker: false
         };
 
         const finalObjects = [...localObjects, newImg];
@@ -323,7 +307,33 @@ export const useDesignBoard = (
     e.target.value = "";
   };
 
-  // --- DEVELOPER ONLY: Convert -> Download -> Use Relative Path ---
+  // --- NEW: Handle Add Sticker ---
+  const handleAddSticker = (url: string) => {
+    const newId = Math.random().toString(36).substr(2, 9);
+
+    // We treat sticker as an image object, but mark it with isSticker
+    const newSticker: ImageObject = {
+      id: newId,
+      type: "image",
+      x: width / 2 - 75, // Default center
+      y: height / 2 - 75,
+      width: 150, // Standard size
+      height: 150,
+      rotation: 0,
+      src: url,
+      borderRadius: 0,
+      opacity: 1,
+      strokeColor: "transparent",
+      strokeWidth: 0,
+      isSticker: !url.includes("gradients"), // Flag to prevent background setting
+    };
+
+    const finalObjects = [...localObjects, newSticker];
+    setObjects(finalObjects, true);
+    setSelectedIds([newId]);
+    setTool("select");
+  };
+
   const handleDevImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -335,7 +345,6 @@ export const useDesignBoard = (
       img.src = originalSrc;
 
       img.onload = () => {
-        // 1. Convert to WebP
         const canvas = document.createElement("canvas");
         canvas.width = img.width;
         canvas.height = img.height;
@@ -344,14 +353,10 @@ export const useDesignBoard = (
         ctx.drawImage(img, 0, 0);
 
         const webpDataUrl = canvas.toDataURL("image/webp", 0.8);
-
-        // 2. Generate Path & Filename
         const timestamp = Date.now();
         const filename = `img_${timestamp}.webp`;
-        // Ensure this relative path matches your folder structure exactly
         const relativePath = `/src/assets/templates/uploads/${filename}`;
 
-        // 3. Trigger Download
         const link = document.createElement("a");
         link.href = webpDataUrl;
         link.download = filename;
@@ -359,14 +364,12 @@ export const useDesignBoard = (
         link.click();
         document.body.removeChild(link);
 
-        // 4. SHOW PERSISTENT TOAST (Waits for user action)
         toast.info("File Downloaded", {
           description: `Move "${filename}" to 'assets/templates/uploads/' then click Add.`,
-          duration: Infinity, // Keeps toast open until you click
+          duration: Infinity,
           action: {
             label: "Add to Canvas",
             onClick: () => {
-              // 5. This code runs ONLY when you click "Add to Canvas"
               const ratio = img.width / img.height;
               const w = 300;
               const h = 300 / ratio;
@@ -385,6 +388,7 @@ export const useDesignBoard = (
                 opacity: 1,
                 strokeColor: "transparent",
                 strokeWidth: 0,
+                isSticker: false
               };
 
               const finalObjects = [...objects, newImg];
@@ -399,6 +403,7 @@ export const useDesignBoard = (
     reader.readAsDataURL(file);
     e.target.value = "";
   };
+
   const handleClearSelection = () => {
     setSelectedIds([]);
   };
@@ -418,7 +423,6 @@ export const useDesignBoard = (
     }
   };
 
-  // --- Attach Shortcuts ---
   useCanvasShortcuts({
     undo: handleUndo,
     redo: handleRedo,
@@ -429,7 +433,6 @@ export const useDesignBoard = (
     selectAll: handleSelectAll,
   });
 
-  /* --- EVENT HANDLERS --- */
   const handleContainerMouseDown = (e: React.MouseEvent) => {
     if (
       e.target === containerRef.current ||
@@ -468,7 +471,6 @@ export const useDesignBoard = (
 
     if (!dragTarget && guides.length > 0) setGuides([]);
 
-    // 1. Selecting
     if (isSelecting.current && selectionStartPos.current) {
       const sx = selectionStartPos.current.x;
       const sy = selectionStartPos.current.y;
@@ -480,7 +482,6 @@ export const useDesignBoard = (
       });
       return;
     }
-    // 2. Rect Draw
     if (isDrawing.current && tool === "rect" && drawingStartPos.current) {
       const sx = drawingStartPos.current.x;
       const sy = drawingStartPos.current.y;
@@ -500,12 +501,10 @@ export const useDesignBoard = (
       });
       return;
     }
-    // 3. Pen Draw
     if (isDrawing.current && tool === "pen") {
       setCurrentPath((prev) => [...prev, { x, y }]);
       return;
     }
-    // 4. Rotate
     if (rotatingTarget) {
       e.preventDefault();
       const obj = localObjects.find((o) => o.id === rotatingTarget.id);
@@ -520,22 +519,6 @@ export const useDesignBoard = (
       updateObject(rotatingTarget.id, { rotation: newRotation });
       return;
     }
-    // 5. Resize
-    // if (resizingTarget) {
-    //   e.preventDefault();
-    //   const obj = localObjects.find((o) => o.id === resizingTarget.id);
-    //   if (!obj || obj.isLocked) return;
-
-    //   const newDimensions = calculateResize(
-    //     obj,
-    //     e.pageX,
-    //     e.pageY,
-    //     resizingTarget,
-    //     currentZoom
-    //   );
-    //   updateObject(resizingTarget.id, newDimensions);
-    //   return;
-    // }
     if (resizingTarget) {
       e.preventDefault();
       const obj = objects.find((o) => o.id === resizingTarget.id);
@@ -552,7 +535,6 @@ export const useDesignBoard = (
       updateObject(resizingTarget.id, newGeo);
       return;
     }
-    // 6. DRAG WITH SNAPPING
     if (dragTarget) {
       e.preventDefault();
       const draggedObj = localObjects.find((o) => o.id === dragTarget.id);
@@ -583,7 +565,6 @@ export const useDesignBoard = (
       return;
     }
 
-    // 7. Pan
     if (isDragging.current && containerRef.current) {
       e.preventDefault();
       containerRef.current.scrollLeft =
@@ -596,7 +577,6 @@ export const useDesignBoard = (
   const handleGlobalMouseUp = (_e: React.MouseEvent) => {
     setGuides([]);
 
-    // 1. Drop/Delete Logic
     if (dragTarget) {
       const draggedObj = localObjects.find((o) => o.id === dragTarget.id);
       if (draggedObj) {
@@ -619,13 +599,13 @@ export const useDesignBoard = (
         }
       }
       if (objectsSnapshot.current !== JSON.stringify(localObjects)) {
-        setObjects(localObjects, true); // Commit history
+        setObjects(localObjects, true);
       }
     }
 
     if (resizingTarget || rotatingTarget) {
       if (objectsSnapshot.current !== JSON.stringify(localObjects)) {
-        setObjects(localObjects, true); // Commit history
+        setObjects(localObjects, true);
       }
     }
 
@@ -697,7 +677,6 @@ export const useDesignBoard = (
       containerRef.current.style.cursor = tool === "hand" ? "grab" : "";
   };
 
-  // --- Viewport/Zoom Effects ---
   useEffect(() => {
     const container = containerRef.current;
     if (container) {
@@ -740,7 +719,6 @@ export const useDesignBoard = (
     currentPath,
   ]);
 
-  // Center Zoom Logic
   useLayoutEffect(() => {
     if (!containerRef.current) return;
     if (shouldCenterZoom.current) {
@@ -762,7 +740,6 @@ export const useDesignBoard = (
     }
   }, [zoom]);
 
-  // Canvas Resize Logic
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
@@ -832,6 +809,7 @@ export const useDesignBoard = (
     handleStartRotation,
     handleAddText,
     handleAddImage,
+    handleAddSticker, // <--- Exposed here
     handleDevImageUpload,
     updateObject,
     handleLayerSelect,

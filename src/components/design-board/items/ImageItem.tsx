@@ -31,7 +31,7 @@ export const ImageItem = ({
   const zoomFactor = props.zoom / 100;
   const [isEditing, setIsEditing] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(
-    null
+    null,
   );
   const [naturalRatio, setNaturalRatio] = useState<number>(0);
 
@@ -261,6 +261,19 @@ export const ImageItem = ({
   const containerRatio = obj.width / obj.height;
   const isContainerWider = containerRatio > naturalRatio;
 
+  // --- FLIP TRANSFORM ---
+  // Create the transform string for flipping
+  const flipTransform = `scale(${obj.flipX ? -1 : 1}, ${obj.flipY ? -1 : 1})`;
+
+  // Combine transforms: Position/Scale -> Flip
+  // We apply the flip AFTER the translation/scale so it flips in place visually
+  const imageTransform = `translate(-50%, -50%) translate(${
+    imgX * Math.round(imgScale * 100)
+  }%, ${imgY * Math.round(imgScale * 100)}%) scale(${Math.max(
+    1,
+    imgScale,
+  )}) ${flipTransform}`;
+
   const imageStyle: React.CSSProperties = {
     position: "absolute",
     left: "50%",
@@ -269,34 +282,24 @@ export const ImageItem = ({
     height: isContainerWider ? "auto" : "100%",
     maxWidth: "none",
     maxHeight: "none",
-    transform: `translate(-50%, -50%) translate(${
-      imgX * Math.round(imgScale * 100)
-    }%, ${imgY * Math.round(imgScale * 100)}%) scale(${Math.max(1, imgScale)})`,
+    transform: imageTransform, // Updated transform
     pointerEvents: "none",
     userSelect: "none",
     objectFit: obj.isBackground ? "cover" : "fill",
   };
 
   // --- CONTROLS POSITIONING LOGIC ---
-  // Calculates the position to keep the controls at the visual "World Bottom"
-  // even when the object is rotated.
   const getControlsStyle = () => {
     const angleRad = (obj.rotation * Math.PI) / 180;
 
-    // 1. Calculate the Visual Height of the Rotated Bounding Box
-    // Use zoomFactor scaled dimensions for pixel accuracy on screen
     const w = obj.width * zoomFactor;
     const h = obj.height * zoomFactor;
     const aabbHeight =
       Math.abs(w * Math.sin(angleRad)) + Math.abs(h * Math.cos(angleRad));
 
-    // 2. Define offset from the center (half bounding box + spacing)
-    const spacing = 60; // Distance below the bounding box
+    const spacing = 60;
     const distFromCenter = aabbHeight / 2 + spacing;
 
-    // 3. Rotate the World Vector (0, distFromCenter) backwards into Local Space
-    // localX = x*cos(-a) - y*sin(-a) = 0 - dist*(-sin(a)) = dist*sin(a)
-    // localY = x*sin(-a) + y*cos(-a) = 0 + dist*cos(a) = dist*cos(a)
     const localX = distFromCenter * Math.sin(angleRad);
     const localY = distFromCenter * Math.cos(angleRad);
 
@@ -304,10 +307,9 @@ export const ImageItem = ({
       position: "absolute" as const,
       top: "50%",
       left: "50%",
-      // Move to calculated local position, then Counter-Rotate the UI itself
       transform: `translate(-50%, -50%) translate(${localX}px, ${localY}px) rotate(${-obj.rotation}deg)`,
       zIndex: 60,
-      width: "12rem", // w-48
+      width: "12rem",
       pointerEvents: "auto" as const,
     };
   };
@@ -362,10 +364,7 @@ export const ImageItem = ({
         </div>
 
         {!obj.isLocked && isEditing && (
-          <div
-            className="image-edit-controls"
-            style={getControlsStyle()} // <-- Applied Corrected Style Here
-          >
+          <div className="image-edit-controls" style={getControlsStyle()}>
             <div
               className="bg-white rounded-md shadow-xl border p-3"
               onMouseDown={(e) => e.stopPropagation()}

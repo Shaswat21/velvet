@@ -522,7 +522,11 @@ export const BackgroundRemover = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="!w-[95vw] !max-w-[1400px] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden outline-none [&>button]:hidden">
+      <DialogContent
+        // Prevent closing when clicking outside
+        onPointerDownOutside={(e) => e.preventDefault()}
+        className="w-[95vw]! max-w-350! h-[90vh] flex flex-col p-0 gap-0 overflow-hidden outline-none [&>button]:hidden"
+      >
         {/* HEADER */}
         <DialogHeader className="px-6 py-4 border-b bg-background shrink-0">
           <div className="flex items-center justify-between">
@@ -542,7 +546,7 @@ export const BackgroundRemover = ({
                 }}
                 disabled={isProcessing}
               >
-                <Undo2 className="w-4 h-4 mr-2" /> Reset
+                <Undo2 className="w-4 h-4 mr-2" /> Reset Mask
               </Button>
             </div>
           </div>
@@ -600,6 +604,25 @@ export const BackgroundRemover = ({
                 <MousePointer2 className="w-3.5 h-3.5" /> Editing Tools
               </span>
 
+              <div className="flex gap-2 p-1 bg-muted rounded-lg">
+                <Button
+                  variant={activeTool === "brush" ? "default" : "ghost"}
+                  size="sm"
+                  className="flex-1 h-8 text-xs"
+                  onClick={() => setActiveTool("brush")}
+                >
+                  <Brush className="w-3 h-3 mr-2" /> Brush
+                </Button>
+                <Button
+                  variant={activeTool === "magic" ? "default" : "ghost"}
+                  size="sm"
+                  className="flex-1 h-8 text-xs"
+                  onClick={() => setActiveTool("magic")}
+                >
+                  <Pipette className="w-3 h-3 mr-2" /> Magic
+                </Button>
+              </div>
+
               <Tabs
                 value={brushMode}
                 onValueChange={(val) =>
@@ -622,25 +645,6 @@ export const BackgroundRemover = ({
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
-
-              <div className="flex gap-2 p-1 bg-muted rounded-lg">
-                <Button
-                  variant={activeTool === "brush" ? "default" : "ghost"}
-                  size="sm"
-                  className="flex-1 h-8 text-xs"
-                  onClick={() => setActiveTool("brush")}
-                >
-                  <Brush className="w-3 h-3 mr-2" /> Brush
-                </Button>
-                <Button
-                  variant={activeTool === "magic" ? "default" : "ghost"}
-                  size="sm"
-                  className="flex-1 h-8 text-xs"
-                  onClick={() => setActiveTool("magic")}
-                >
-                  <Pipette className="w-3 h-3 mr-2" /> Magic
-                </Button>
-              </div>
 
               {activeTool === "brush" ? (
                 <>
@@ -746,7 +750,7 @@ export const BackgroundRemover = ({
                 transformOrigin: "center",
                 transition: isPanning ? "none" : "transform 0.1s ease-out",
                 cursor:
-                  isPanning || isSpacePressed.current ? "grabbing" : "none",
+                  isPanning || isSpacePressed.current ? "grabbing" : "default",
                 width: "100%",
                 height: "100%",
                 display: "flex",
@@ -776,7 +780,7 @@ export const BackgroundRemover = ({
             </div>
 
             {/* Zoom Controls */}
-            <div className="absolute bottom-6 right-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-1.5 rounded-lg shadow-lg border flex items-center gap-1 z-30">
+            <div className="absolute bottom-6 right-6 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 p-1.5 rounded-lg shadow-lg border flex items-center gap-1 z-30">
               <Button
                 variant="ghost"
                 size="icon"
@@ -823,13 +827,13 @@ export const BackgroundRemover = ({
             <Button
               onClick={handleSave}
               disabled={isProcessing}
-              className="min-w-[100px]"
+              className="min-w-25"
             >
               {isProcessing ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Check className="mr-2 h-4 w-4" />
-              )}{" "}
+              )}
               Done
             </Button>
           </div>

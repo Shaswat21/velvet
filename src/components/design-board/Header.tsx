@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -13,8 +13,10 @@ import {
   Group,
   Ungroup,
   Layers,
+  LayoutGrid,
 } from "lucide-react";
 import { ColorPicker } from "./ui/ColorPicker";
+import { StickerSelector } from "./ui/StickerSelector"; // Imported Component
 import type { ToolType } from "@/lib/types";
 import type { PaperKey, Orientation } from "@/lib/constants";
 
@@ -28,7 +30,8 @@ interface HeaderProps {
   setBgColor: (c: string) => void;
   handleAddText: () => void;
   handleAddImage: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleDevImageUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void; // <--- NEW PROP
+  handleDevImageUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleAddSticker: (url: string) => void; // New Prop
   handleClearSelection: () => void;
   handleDeleteSelected: () => void;
   selectedId: string | null;
@@ -51,6 +54,7 @@ export const Header = ({
   handleAddText,
   handleAddImage,
   handleDevImageUpload,
+  handleAddSticker,
   handleClearSelection,
   handleDeleteSelected,
   selectedId,
@@ -62,11 +66,11 @@ export const Header = ({
   setIsLayersOpen,
 }: HeaderProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const devInputRef = useRef<HTMLInputElement>(null); // <--- Ref for hidden dev input
+  const devInputRef = useRef<HTMLInputElement>(null);
+  const [isStickerModalOpen, setIsStickerModalOpen] = useState(false);
 
   return (
     <header className="grid grid-cols-3 items-center px-4 py-3 bg-white border-b shadow-sm z-9 h-16 relative">
-      {/* STANDARD USER INPUT */}
       <input
         type="file"
         ref={fileInputRef}
@@ -75,13 +79,19 @@ export const Header = ({
         className="hidden"
       />
 
-      {/* HIDDEN DEV INPUT */}
       <input
         type="file"
         ref={devInputRef}
         onChange={handleDevImageUpload}
         accept="image/*"
         className="hidden"
+      />
+
+      {/* STICKER MODAL */}
+      <StickerSelector
+        isOpen={isStickerModalOpen}
+        onClose={() => setIsStickerModalOpen(false)}
+        onSelect={(url: string) => handleAddSticker(url)}
       />
 
       <div className="flex items-center gap-4">
@@ -133,21 +143,30 @@ export const Header = ({
           <Type className="h-3.5 w-3.5" /> Add Text
         </Button>
 
-        {/* ADD IMAGE BUTTON WITH DEV TRIGGER */}
         <Button
           variant="outline"
           size="sm"
           className="h-8 gap-2 px-3 text-xs"
-          onClick={() => fileInputRef.current?.click()} // Left Click: Normal User
+          onClick={() => fileInputRef.current?.click()}
           onContextMenu={(e) => {
             e.preventDefault();
             if (handleDevImageUpload) {
-              devInputRef.current?.click(); // Right Click: Dev Mode
+              devInputRef.current?.click();
             }
           }}
           title="Left-click: Add Image | Right-click: Dev Upload (WebP)"
         >
           <ImageIcon className="h-3.5 w-3.5" /> Add Image
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-2 px-3 text-xs"
+          onClick={() => setIsStickerModalOpen(true)}
+          title="Browse Stickers & Gradients"
+        >
+          <LayoutGrid className="h-3.5 w-3.5" /> Library
         </Button>
       </div>
       <div className="flex items-center justify-end gap-2">

@@ -568,10 +568,8 @@ export const Toolbar = ({
           <div className="flex items-center bg-gray-100 p-0.5 rounded-md border gap-0.5">
             <Button
               size="icon"
-              variant={(selectedObject as any).flipX ? "secondary" : "ghost"}
-              className={`h-7 w-7 rounded-sm ${
-                (selectedObject as any).flipX ? "bg-blue-200 text-blue-700" : ""
-              }`}
+              variant={(selectedObject as any).flipX ? "outline" : "ghost"}
+              className={`h-7 w-7 rounded-sm `}
               onClick={() =>
                 updateSelected({ flipX: !(selectedObject as any).flipX })
               }
@@ -581,10 +579,8 @@ export const Toolbar = ({
             </Button>
             <Button
               size="icon"
-              variant={(selectedObject as any).flipY ? "secondary" : "ghost"}
-              className={`h-7 w-7 rounded-sm ${
-                (selectedObject as any).flipY ? "bg-blue-200 text-blue-700" : ""
-              }`}
+              variant={(selectedObject as any).flipY ? "outline" : "ghost"}
+              className={`h-7 w-7 rounded-sm`}
               onClick={() =>
                 updateSelected({ flipY: !(selectedObject as any).flipY })
               }
@@ -635,6 +631,30 @@ export const Toolbar = ({
               className="w-10 h-8 text-xs text-center border rounded-md"
               title="Border Radius"
             />
+          </div>
+          <div className="flex items-center bg-gray-100 p-0.5 rounded-md border gap-0.5">
+            <Button
+              size="icon"
+              variant={(selectedObject as any).flipX ? "outline" : "ghost"}
+              className={`h-7 w-7 rounded-sm `}
+              onClick={() =>
+                updateSelected({ flipX: !(selectedObject as any).flipX })
+              }
+              title="Flip Horizontally"
+            >
+              <FlipHorizontal className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant={(selectedObject as any).flipY ? "outline" : "ghost"}
+              className={`h-7 w-7 rounded-sm `}
+              onClick={() =>
+                updateSelected({ flipY: !(selectedObject as any).flipY })
+              }
+              title="Flip Vertically"
+            >
+              <FlipVertical className="h-3.5 w-3.5" />
+            </Button>
           </div>
         </>
       )}
@@ -715,8 +735,8 @@ export const Toolbar = ({
                         (selectedObject as any).isLiquid
                           ? "liquid"
                           : (selectedObject as any).isGlass
-                          ? "frosted"
-                          : "none"
+                            ? "frosted"
+                            : "none"
                       }
                       onValueChange={(val) => {
                         if (val === "liquid") {

@@ -57,7 +57,7 @@ async function loadGifFrames(src: string): Promise<Frame[] | null> {
         const patchData = new ImageData(
           new Uint8ClampedArray(frame.patch),
           fw,
-          fh
+          fh,
         );
         const tempCtx = document.createElement("canvas");
         tempCtx.width = fw;
@@ -106,7 +106,7 @@ export default function DesignBoard({
     paper,
     orientation,
     initialObjects,
-    initialBgColor
+    initialBgColor,
   );
   const [isClosingToolbar, setIsClosingToolbar] = useState(false);
   const [isLayersOpen, setIsLayersOpen] = useState(false);
@@ -211,7 +211,7 @@ export default function DesignBoard({
           board.objects,
           board.width,
           board.height,
-          transparent ? "transparent" : board.bgColor
+          transparent ? "transparent" : board.bgColor,
         );
         const blob = new Blob([svgString], {
           type: "image/svg+xml;charset=utf-8",
@@ -230,7 +230,7 @@ export default function DesignBoard({
             ((obj as ImageObject).src
               .toLowerCase()
               .includes("data:image/gif") ||
-              (obj as ImageObject).src.toLowerCase().endsWith(".gif"))
+              (obj as ImageObject).src.toLowerCase().endsWith(".gif")),
         );
 
         const processedGifs = await Promise.all(
@@ -243,10 +243,10 @@ export default function DesignBoard({
                 ? frames.reduce((acc, f) => acc + f.delay, 0)
                 : 0,
             };
-          })
+          }),
         );
         const validAnimatedGifs = processedGifs.filter(
-          (g): g is ProcessedGif => g.frames !== null && g.frames.length > 0
+          (g): g is ProcessedGif => g.frames !== null && g.frames.length > 0,
         );
 
         const gifConfig = {
@@ -255,7 +255,7 @@ export default function DesignBoard({
             if (node.tagName === "IMG") {
               const src = (node as HTMLImageElement).src;
               const isAnimated = validAnimatedGifs.some(
-                (g) => src.includes(g.src) || g.src.includes(src)
+                (g) => src.includes(g.src) || g.src.includes(src),
               );
               if (isAnimated) return false;
             }
@@ -308,7 +308,7 @@ export default function DesignBoard({
                 -(gifObj.width / 2) * scale,
                 -(gifObj.height / 2) * scale,
                 gifObj.width * scale,
-                gifObj.height * scale
+                gifObj.height * scale,
               );
               ctx.restore();
             });
@@ -379,6 +379,7 @@ export default function DesignBoard({
         setBgColor={board.setBgColor}
         handleAddText={board.handleAddText}
         handleAddImage={board.handleAddImage}
+        handleAddSticker={board.handleAddSticker}
         handleDevImageUpload={
           ENABLE_DEV_MODE ? board.handleDevImageUpload : undefined
         }
@@ -440,7 +441,7 @@ export default function DesignBoard({
         onToggleLock={board.toggleLock}
         addSelectedId={(id) =>
           board.setSelectedIds((prev) =>
-            prev.includes(id) ? prev : [...prev, id]
+            prev.includes(id) ? prev : [...prev, id],
           )
         }
         isDrawing={board.isDrawing}
