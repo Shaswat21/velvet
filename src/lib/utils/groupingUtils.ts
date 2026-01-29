@@ -48,7 +48,7 @@ const flattenItem = (item: CanvasObject): CanvasObject[] => {
 
 export const performGroup = (
   objects: CanvasObject[],
-  selectedIds: string[]
+  selectedIds: string[],
 ) => {
   const itemsToGroup = objects.filter((o) => selectedIds.includes(o.id));
 
@@ -92,6 +92,7 @@ export const performGroup = (
     originalHeight: groupHeight,
     rotation: 0,
     objects: groupedChildren,
+    opacity: 1,
   };
 
   const remainingObjects = objects.filter((o) => !selectedIds.includes(o.id));
@@ -102,7 +103,7 @@ export const performGroup = (
 
 export const performUngroup = (
   objects: CanvasObject[],
-  selectedIds: string[]
+  selectedIds: string[],
 ) => {
   if (selectedIds.length !== 1) return null;
 

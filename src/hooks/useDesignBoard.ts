@@ -24,7 +24,7 @@ import { toast } from "sonner";
 const getRelativePos = (
   e: MouseEvent | React.MouseEvent,
   canvas: HTMLElement,
-  zoom: number
+  zoom: number,
 ) => {
   const rect = canvas.getBoundingClientRect();
   const x = (e.clientX - rect.left) / (zoom / 100);
@@ -37,7 +37,7 @@ export const useDesignBoard = (
   paper: PaperKey,
   orientation: Orientation,
   initialObjects?: CanvasObject[],
-  initialBgColor?: string
+  initialBgColor?: string,
 ) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -73,7 +73,7 @@ export const useDesignBoard = (
 
   // FIX 2: Initialize local state with imported objects
   const [localObjects, setLocalObjects] = useState<CanvasObject[]>(
-    initialObjects || []
+    initialObjects || [],
   );
 
   // FIX 3: Initialize background color
@@ -106,7 +106,7 @@ export const useDesignBoard = (
     h: number;
   } | null>(null);
   const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>(
-    []
+    [],
   );
 
   const { w, h } = PAPER_SIZES[paper];
@@ -122,10 +122,10 @@ export const useDesignBoard = (
   const updateObject = (
     id: string,
     updates: Partial<CanvasObject>,
-    saveToHistory: boolean = false
+    saveToHistory: boolean = false,
   ) => {
     const newObjects = localObjects.map(
-      (obj) => (obj.id === id ? { ...obj, ...updates } : obj) as CanvasObject
+      (obj) => (obj.id === id ? { ...obj, ...updates } : obj) as CanvasObject,
     );
     setObjects(newObjects, saveToHistory);
   };
@@ -162,7 +162,7 @@ export const useDesignBoard = (
   const handleLayerSelect = (id: string, multi: boolean) => {
     if (multi)
       setSelectedIds((prev) =>
-        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
       );
     else setSelectedIds([id]);
   };
@@ -194,7 +194,7 @@ export const useDesignBoard = (
 
   const toggleLock = (id: string) => {
     const newObjects = localObjects.map((obj) =>
-      obj.id === id ? { ...obj, isLocked: !obj.isLocked } : obj
+      obj.id === id ? { ...obj, isLocked: !obj.isLocked } : obj,
     );
     setObjects(newObjects, true);
   };
@@ -406,11 +406,11 @@ export const useDesignBoard = (
   const handleDeleteSelected = () => {
     if (selectedIds.length > 0) {
       const finalObjects = localObjects.filter(
-        (t) => !selectedIds.includes(t.id) || t.isLocked
+        (t) => !selectedIds.includes(t.id) || t.isLocked,
       );
       setObjects(finalObjects, true);
       setSelectedIds((prev) =>
-        prev.filter((id) => localObjects.find((o) => o.id === id)?.isLocked)
+        prev.filter((id) => localObjects.find((o) => o.id === id)?.isLocked),
       );
     } else {
       setObjects([], true);
@@ -515,7 +515,7 @@ export const useDesignBoard = (
         rotatingTarget.cx,
         rotatingTarget.cy,
         rotatingTarget.startAngle,
-        rotatingTarget.initialRotation
+        rotatingTarget.initialRotation,
       );
       updateObject(rotatingTarget.id, { rotation: newRotation });
       return;
@@ -546,7 +546,7 @@ export const useDesignBoard = (
         e.pageX,
         e.pageY,
         resizingTarget,
-        zoom[0] / 100
+        zoom[0] / 100,
       );
 
       updateObject(resizingTarget.id, newGeo);
@@ -568,7 +568,7 @@ export const useDesignBoard = (
         localObjects,
         width,
         height,
-        selectedIds
+        selectedIds,
       );
 
       setGuides(activeGuides);
@@ -593,7 +593,7 @@ export const useDesignBoard = (
     }
   };
 
-  const handleGlobalMouseUp = (e: React.MouseEvent) => {
+  const handleGlobalMouseUp = (_e: React.MouseEvent) => {
     setGuides([]);
 
     // 1. Drop/Delete Logic
@@ -609,7 +609,7 @@ export const useDesignBoard = (
           draggedObj.y > height;
         if (isOutside) {
           const finalObjects = localObjects.filter(
-            (o) => o.id !== dragTarget.id
+            (o) => o.id !== dragTarget.id,
           );
           setObjects(finalObjects, true);
           setSelectedIds((prev) => prev.filter((id) => id !== dragTarget.id));
@@ -637,7 +637,7 @@ export const useDesignBoard = (
             obj.x < selectionBox.x + selectionBox.w &&
             obj.x + obj.width > selectionBox.x &&
             obj.y < selectionBox.y + selectionBox.h &&
-            obj.y + obj.height > selectionBox.y
+            obj.y + obj.height > selectionBox.y,
         )
         .map((o) => o.id);
       setSelectedIds(selected);
@@ -781,8 +781,8 @@ export const useDesignBoard = (
         Math.floor(
           Math.min(
             (containerRef.current.clientWidth - 80) / width,
-            (containerRef.current.clientHeight - 80) / height
-          ) * 100
+            (containerRef.current.clientHeight - 80) / height,
+          ) * 100,
         ),
       ]);
     }

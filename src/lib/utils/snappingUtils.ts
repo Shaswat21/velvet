@@ -79,7 +79,7 @@ export const calculateSnapping = (
   const checkAlign = (
     val1: number,
     val2: number,
-    isCenter: boolean,
+    _isCenter: boolean,
     guideType: "vertical" | "horizontal"
   ) => {
     const dist = Math.abs(val1 - val2);
