@@ -176,7 +176,7 @@ export const CanvasArea = ({
   const isSelectedBackground =
     selectedObject && (selectedObject as any).isBackground;
   // Check if object is a sticker based on custom property
-  const isSelectedSticker = selectedObject && ((selectedObject as any).isSticker);
+  const isSelectedSticker = selectedObject && (selectedObject as any).isSticker;
   const hasExistingBackground = objects.some((o) => (o as any).isBackground);
 
   return (
@@ -391,11 +391,13 @@ export const CanvasArea = ({
               !isSelectedBackground && (
                 <>
                   <ContextMenuItem
+                    className="capitalize"
                     onClick={() =>
                       setBgRemoveTarget(selectedObject as ImageObject)
                     }
                   >
-                    <Wand2 className="w-4 h-4 mr-2" /> Edit Image
+                    <Wand2 className="w-4 h-4 mr-2" /> Edit{" "}
+                    {selectedObject.imageType}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
                 </>

@@ -294,7 +294,8 @@ export const useDesignBoard = (
           opacity: 1,
           strokeColor: "transparent",
           strokeWidth: 0,
-          isSticker: false
+          isSticker: false,
+          imageType: "image",
         };
 
         const finalObjects = [...localObjects, newImg];
@@ -309,29 +310,61 @@ export const useDesignBoard = (
 
   // --- NEW: Handle Add Sticker ---
   const handleAddSticker = (url: string) => {
-    const newId = Math.random().toString(36).substr(2, 9);
+    // 1. Create a temporary image to read dimensions
+    const img = new Image();
+    img.src = url;
 
-    // We treat sticker as an image object, but mark it with isSticker
-    const newSticker: ImageObject = {
-      id: newId,
-      type: "image",
-      x: width / 2 - 75, // Default center
-      y: height / 2 - 75,
-      width: 150, // Standard size
-      height: 150,
-      rotation: 0,
-      src: url,
-      borderRadius: 0,
-      opacity: 1,
-      strokeColor: "transparent",
-      strokeWidth: 0,
-      isSticker: !url.includes("gradients"), // Flag to prevent background setting
+    img.onload = () => {
+      const newId = Math.random().toString(36).substr(2, 9);
+
+      const type = url.includes("gradients")
+        ? "gradient"
+        : url.includes("illustrations")
+          ? "illustration"
+          : "sticker";
+
+      // 2. Define a "Target Size" (Max width or height)
+      let baseSize = 150; // Default for stickers
+      if (type === "gradient") baseSize = 300;
+      if (type === "illustration") baseSize = 500;
+
+      // 3. Calculate Aspect Ratio to preserve dimensions
+      const aspectRatio = img.naturalWidth / img.naturalHeight;
+      let finalW = baseSize;
+      let finalH = baseSize;
+
+      if (aspectRatio > 1) {
+        // Landscape: constrain width, calculate height
+        finalW = baseSize;
+        finalH = baseSize / aspectRatio;
+      } else {
+        // Portrait/Square: constrain height, calculate width
+        finalH = baseSize;
+        finalW = baseSize * aspectRatio;
+      }
+
+      const newSticker: ImageObject = {
+        id: newId,
+        type: "image",
+        x: width / 2 - finalW / 2, // Center based on calculated size
+        y: height / 2 - finalH / 2,
+        width: finalW,
+        height: finalH,
+        rotation: 0,
+        src: url,
+        borderRadius: 0,
+        opacity: 1,
+        strokeColor: "transparent",
+        strokeWidth: 0,
+        isSticker: !url.includes("gradients"),
+        imageType: type,
+      };
+
+      const finalObjects = [...localObjects, newSticker];
+      setObjects(finalObjects, true);
+      setSelectedIds([newId]);
+      setTool("select");
     };
-
-    const finalObjects = [...localObjects, newSticker];
-    setObjects(finalObjects, true);
-    setSelectedIds([newId]);
-    setTool("select");
   };
 
   const handleDevImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -388,7 +421,8 @@ export const useDesignBoard = (
                 opacity: 1,
                 strokeColor: "transparent",
                 strokeWidth: 0,
-                isSticker: false
+                isSticker: false,
+                imageType: "image",
               };
 
               const finalObjects = [...objects, newImg];

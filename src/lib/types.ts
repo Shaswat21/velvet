@@ -1,4 +1,5 @@
 export type ToolType = "select" | "hand" | "rect" | "pen";
+type ImageType = "image" | "sticker" | "gradient" | "illustration";
 
 export interface Shadow {
   color: string;
@@ -63,6 +64,7 @@ export interface ImageObject extends BaseObject {
   isSticker: boolean;
   flipX?: boolean;
   flipY?: boolean;
+  imageType: ImageType;
 }
 
 export interface GroupObject extends BaseObject {

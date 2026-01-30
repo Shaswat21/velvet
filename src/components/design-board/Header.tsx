@@ -16,7 +16,7 @@ import {
   LayoutGrid,
 } from "lucide-react";
 import { ColorPicker } from "./ui/ColorPicker";
-import { StickerSelector } from "./ui/StickerSelector"; // Imported Component
+import { StickerSelector } from "./ui/Library"; // Imported Component
 import type { ToolType } from "@/lib/types";
 import type { PaperKey, Orientation } from "@/lib/constants";
 

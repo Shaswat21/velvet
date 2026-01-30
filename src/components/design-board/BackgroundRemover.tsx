@@ -769,7 +769,7 @@ export const BackgroundRemover = ({
                   src={imageSrc}
                   draggable={false}
                   alt="Reference"
-                  className={`absolute inset-0 w-full h-full object-contain pointer-events-none select-none transition-opacity duration-300 ${brushMode === "restore" ? "opacity-40 grayscale blur-[0.5px]" : "opacity-0"}`}
+                  className={`absolute inset-0 w-full h-full object-contain pointer-events-none select-none transition-opacity duration-300 ${brushMode === "restore" ? "opacity-40 grayscale-50 blur-[0.5px]" : "opacity-0"}`}
                 />
                 <canvas
                   ref={canvasRef}
