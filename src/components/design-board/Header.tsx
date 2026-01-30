@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -16,7 +16,6 @@ import {
   LayoutGrid,
 } from "lucide-react";
 import { ColorPicker } from "./ui/ColorPicker";
-import { StickerSelector } from "./ui/Library"; // Imported Component
 import type { ToolType } from "@/lib/types";
 import type { PaperKey, Orientation } from "@/lib/constants";
 
@@ -41,6 +40,8 @@ interface HeaderProps {
   isGroupSelected?: boolean;
   isLayersOpen: boolean;
   setIsLayersOpen: (v: boolean) => void;
+  isLibraryOpen: boolean;
+  setIsLibraryOpen: (v: boolean) => void;
 }
 
 export const Header = ({
@@ -54,7 +55,6 @@ export const Header = ({
   handleAddText,
   handleAddImage,
   handleDevImageUpload,
-  handleAddSticker,
   handleClearSelection,
   handleDeleteSelected,
   selectedId,
@@ -64,10 +64,11 @@ export const Header = ({
   isGroupSelected = false,
   isLayersOpen,
   setIsLayersOpen,
+  isLibraryOpen,
+  setIsLibraryOpen,
 }: HeaderProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const devInputRef = useRef<HTMLInputElement>(null);
-  const [isStickerModalOpen, setIsStickerModalOpen] = useState(false);
 
   return (
     <header className="grid grid-cols-3 items-center px-4 py-3 bg-white border-b shadow-sm z-9 h-16 relative">
@@ -85,13 +86,6 @@ export const Header = ({
         onChange={handleDevImageUpload}
         accept="image/*"
         className="hidden"
-      />
-
-      {/* STICKER MODAL */}
-      <StickerSelector
-        isOpen={isStickerModalOpen}
-        onClose={() => setIsStickerModalOpen(false)}
-        onSelect={(url: string) => handleAddSticker(url)}
       />
 
       <div className="flex items-center gap-4">
@@ -154,7 +148,6 @@ export const Header = ({
               devInputRef.current?.click();
             }
           }}
-          title="Left-click: Add Image | Right-click: Dev Upload (WebP)"
         >
           <ImageIcon className="h-3.5 w-3.5" /> Add Image
         </Button>
@@ -163,8 +156,7 @@ export const Header = ({
           variant="outline"
           size="sm"
           className="h-8 gap-2 px-3 text-xs"
-          onClick={() => setIsStickerModalOpen(true)}
-          title="Browse Stickers & Gradients"
+          onClick={() => setIsLibraryOpen(!isLibraryOpen)}
         >
           <LayoutGrid className="h-3.5 w-3.5" /> Library
         </Button>

@@ -29,6 +29,8 @@ import {
   CircleDashed,
   Pipette,
   MapPin,
+  Image as ImageIcon,
+  Grid,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -55,6 +57,9 @@ export const BackgroundRemover = ({
   const [brushSize, setBrushSize] = useState(50);
   const [magicTolerance, setMagicTolerance] = useState(20);
 
+  // --- BACKGROUND STATE ---
+  const [useWhiteBackground, setUseWhiteBackground] = useState(false);
+
   const [isCursorVisible, setIsCursorVisible] = useState(false);
 
   // --- ZOOM & PAN STATE ---
@@ -79,6 +84,7 @@ export const BackgroundRemover = ({
     if (!isOpen || !imageSrc) return;
 
     setPan({ x: 0, y: 0 });
+    setUseWhiteBackground(false);
 
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -100,6 +106,11 @@ export const BackgroundRemover = ({
       }
     };
   }, [isOpen, imageSrc, containerEl]);
+
+  // Re-render when background setting changes
+  useEffect(() => {
+    renderCanvas();
+  }, [useWhiteBackground]);
 
   // Native Zoom Handler
   useEffect(() => {
@@ -237,11 +248,20 @@ export const BackgroundRemover = ({
 
     ctx.clearRect(0, 0, w, h);
 
+    // Draw Image
     ctx.globalCompositeOperation = "source-over";
     ctx.drawImage(originalImageRef.current, 0, 0, w, h);
 
+    // Apply Mask
     ctx.globalCompositeOperation = "destination-in";
     ctx.drawImage(maskCanvasRef.current, 0, 0, w, h);
+
+    // Apply Background (if White) behind the masked image
+    if (useWhiteBackground) {
+      ctx.globalCompositeOperation = "destination-over";
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
+    }
 
     ctx.globalCompositeOperation = "source-over";
   };
@@ -277,20 +297,14 @@ export const BackgroundRemover = ({
     if (containerEl) containerEl.style.cursor = "none";
 
     if (activeTool === "magic") {
-      // MAGIC WAND (MAP PIN) STYLE
       cursorRef.current.style.width = `auto`;
       cursorRef.current.style.height = `auto`;
       cursorRef.current.style.border = "none";
       cursorRef.current.style.borderRadius = "0";
       cursorRef.current.style.backgroundColor = "transparent";
       cursorRef.current.style.boxShadow = "none";
-
-      // ALIGNMENT:
-      // translate(-50%, -100%): Centers horizontally, Bottom aligns to Y.
-      // This ensures the TIP of the pin is at the click point.
       cursorRef.current.style.transform = `translate(-50%, -100%)`;
     } else {
-      // BRUSH STYLE
       cursorRef.current.style.width = `${brushSize}px`;
       cursorRef.current.style.height = `${brushSize}px`;
       cursorRef.current.style.border =
@@ -494,9 +508,11 @@ export const BackgroundRemover = ({
     renderCanvas();
   };
 
+  // --- UPDATED: Save as WEBP ---
   const handleSave = () => {
     if (!canvasRef.current) return;
-    const newSrc = canvasRef.current.toDataURL("image/png");
+    // Export as WebP with 0.9 quality
+    const newSrc = canvasRef.current.toDataURL("image/webp", 0.9);
     onApply(newSrc);
     onClose();
   };
@@ -523,11 +539,9 @@ export const BackgroundRemover = ({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent
-        // Prevent closing when clicking outside
         onPointerDownOutside={(e) => e.preventDefault()}
         className="w-[95vw]! max-w-350! h-[90vh] flex flex-col p-0 gap-0 overflow-hidden outline-none [&>button]:hidden"
       >
-        {/* HEADER */}
         <DialogHeader className="px-6 py-4 border-b bg-background shrink-0">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
@@ -552,9 +566,7 @@ export const BackgroundRemover = ({
           </div>
         </DialogHeader>
 
-        {/* WORKSPACE */}
         <div className="flex-1 flex overflow-hidden min-h-0 relative">
-          {/* Custom Cursor Portal */}
           {isOpen &&
             createPortal(
               <div
@@ -567,7 +579,6 @@ export const BackgroundRemover = ({
                   justifyContent: "center",
                 }}
               >
-                {/* MAP PIN ICON: Mirrored (rotate-45) and anchored at bottom tip */}
                 {activeTool === "magic" && (
                   <MapPin
                     className="w-6 h-6 text-black fill-black stroke-white stroke-[1.5px] rotate-135 origin-bottom"
@@ -578,7 +589,6 @@ export const BackgroundRemover = ({
               document.body,
             )}
 
-          {/* LEFT SIDEBAR */}
           <div className="w-72 border-r bg-muted/20 p-5 flex flex-col gap-6 overflow-y-auto shrink-0 z-20">
             <div className="space-y-3">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -705,6 +715,34 @@ export const BackgroundRemover = ({
               )}
             </div>
 
+            <Separator />
+
+            {/* --- FIXED BACKGROUND OPTIONS (STACKED) --- */}
+            <div className="space-y-4">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <ImageIcon className="w-3.5 h-3.5" /> Background
+              </span>
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant={!useWhiteBackground ? "default" : "outline"}
+                  size="sm"
+                  className="justify-start px-3"
+                  onClick={() => setUseWhiteBackground(false)}
+                >
+                  <Grid className="w-3.5 h-3.5 mr-2 opacity-70" /> Transparent
+                </Button>
+                <Button
+                  variant={useWhiteBackground ? "default" : "outline"}
+                  size="sm"
+                  className="justify-start px-3"
+                  onClick={() => setUseWhiteBackground(true)}
+                >
+                  <div className="w-3.5 h-3.5 mr-2 rounded-full border bg-white shadow-sm" />{" "}
+                  White
+                </Button>
+              </div>
+            </div>
+
             <div className="mt-auto p-3 rounded-lg border text-xs space-y-1.5">
               <div className="flex items-center gap-2">
                 <Hand className="w-3 h-3" />{" "}
@@ -721,13 +759,11 @@ export const BackgroundRemover = ({
             </div>
           </div>
 
-          {/* MAIN CANVAS CONTAINER */}
           <div
             ref={setContainerEl}
-            // Block image dragging explicitly
             onDragStart={(e) => e.preventDefault()}
             className="flex-1 bg-secondary/30 relative overflow-hidden flex items-center justify-center touch-none outline-none select-none"
-            style={{ cursor: "none" }} // ALWAYS NONE
+            style={{ cursor: "none" }}
             tabIndex={-1}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
@@ -779,7 +815,6 @@ export const BackgroundRemover = ({
               </div>
             </div>
 
-            {/* Zoom Controls */}
             <div className="absolute bottom-6 right-6 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 p-1.5 rounded-lg shadow-lg border flex items-center gap-1 z-30">
               <Button
                 variant="ghost"
@@ -814,7 +849,6 @@ export const BackgroundRemover = ({
           </div>
         </div>
 
-        {/* FOOTER */}
         <DialogFooter className="px-6 py-4 border-t bg-background shrink-0">
           <div className="flex items-center gap-2">
             <Button

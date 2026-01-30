@@ -8,13 +8,14 @@ import type { Orientation, PaperKey } from "@/lib/constants";
 import { Header } from "./Header";
 import { Toolbar } from "./Toolbar";
 import { Footer } from "./Footer";
-import { LayersPanel } from "./LayersPanel";
+import { LayersPanel } from "./ui/LayersPanel";
 import { CanvasArea } from "./CanvasArea";
 import { useDesignBoard } from "@/hooks/useDesignBoard";
 import { type ExportOptions } from "./ExportDialog";
 import { type ImageObject } from "@/lib/types";
 import { ENABLE_DEV_MODE, VELVET_KEY } from "@/lib/constants";
 import { generateSVGString } from "@/lib/render";
+import { LibraryPanel } from "./ui/LibraryPanel";
 
 // --- GIF WORKER ---
 const gifWorkerCode = `importScripts('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js');`;
@@ -110,6 +111,7 @@ export default function DesignBoard({
   );
   const [isClosingToolbar, setIsClosingToolbar] = useState(false);
   const [isLayersOpen, setIsLayersOpen] = useState(false);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
 
   useEffect(() => {
     // Save current state to LocalStorage whenever critical data changes
@@ -120,7 +122,6 @@ export default function DesignBoard({
       bgColor: board.bgColor,
       timestamp: Date.now(),
     };
-    localStorage.setItem("velvet_autosave", JSON.stringify(stateToSave));
   }, [board.objects, board.bgColor, paper, orientation]);
 
   const handleCloseToolbar = () => {
@@ -398,6 +399,8 @@ export default function DesignBoard({
         }
         isLayersOpen={isLayersOpen}
         setIsLayersOpen={setIsLayersOpen}
+        isLibraryOpen={isLibraryOpen}
+        setIsLibraryOpen={setIsLibraryOpen}
       />
 
       {board.tool == "select" && (
@@ -446,6 +449,13 @@ export default function DesignBoard({
         }
         isDrawing={board.isDrawing}
         currentPath={board.currentPath}
+      />
+
+      <LibraryPanel
+        isOpen={isLibraryOpen}
+        onClose={() => setIsLibraryOpen(false)}
+        onSelect={board.handleAddSticker}
+        selectedObject={board.singleSelectedObject}
       />
 
       <LayersPanel

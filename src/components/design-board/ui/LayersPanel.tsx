@@ -15,7 +15,7 @@ import {
 } from "@dnd-kit/sortable";
 import { X, Lock } from "lucide-react"; // Import Lock icon
 import { Button } from "@/components/ui/button";
-import { LayerItem } from "./items/LayerItem";
+import { LayerItem } from "../items/LayerItem";
 import type { CanvasObject } from "@/lib/types";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 

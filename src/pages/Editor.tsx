@@ -28,19 +28,19 @@ export default function EditorPage() {
     if (routerState) return;
 
     // If NO router state (e.g. Reload), try to load from Auto-Save
-    const savedData = localStorage.getItem("velvet_autosave");
-    if (savedData) {
-      try {
-        const parsed = JSON.parse(savedData);
-        // Basic validation to ensure it's not junk data
-        if (parsed && parsed.paper && parsed.objects) {
-          setConfig(parsed);
-          return;
-        }
-      } catch (e) {
-        console.error("Failed to load autosave:", e);
-      }
-    }
+    // const savedData = localStorage.getItem("velvet_autosave");
+    // if (savedData) {
+    //   try {
+    //     const parsed = JSON.parse(savedData);
+    //     // Basic validation to ensure it's not junk data
+    //     if (parsed && parsed.paper && parsed.objects) {
+    //       setConfig(parsed);
+    //       return;
+    //     }
+    //   } catch (e) {
+    //     console.error("Failed to load autosave:", e);
+    //   }
+    // }
 
     // If neither exists, THEN redirect (prevents infinite loop)
     // We use replace: true to clean up history
