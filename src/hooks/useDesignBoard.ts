@@ -343,6 +343,7 @@ export const useDesignBoard = (
         let baseSize = 150;
         if (type === "gradient") baseSize = 300;
         if (type === "illustration") baseSize = 500;
+        if (type === "mask") baseSize = 500;
         if (type === "image") baseSize = 300;
 
         const aspectRatio = img.naturalWidth / img.naturalHeight;
