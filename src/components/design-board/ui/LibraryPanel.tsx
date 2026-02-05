@@ -418,71 +418,71 @@ const BlendGenerator = ({
     }
   };
 
-// --- Helper: Flatten Image Edits (Flip, Crop, Zoom, etc.) ---
-const flattenImageEdits = async (obj: ImageObject): Promise<string> => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      // The canvas size matches the object's container frame
-      canvas.width = obj.width;
-      canvas.height = obj.height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        resolve(obj.src);
-        return;
-      }
+  // --- Helper: Flatten Image Edits (Flip, Crop, Zoom, etc.) ---
+  const flattenImageEdits = async (obj: ImageObject): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        // The canvas size matches the object's container frame
+        canvas.width = obj.width;
+        canvas.height = obj.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(obj.src);
+          return;
+        }
 
-      // 1. Calculate Rendered Dimensions (Simulate object-fit: cover logic)
-      const containerRatio = obj.width / obj.height;
-      const naturalRatio = img.naturalWidth / img.naturalHeight;
-      
-      let renderW, renderH;
-      if (containerRatio > naturalRatio) {
-        renderW = obj.width;
-        renderH = obj.width / naturalRatio;
-      } else {
-        renderH = obj.height;
-        renderW = obj.height * naturalRatio;
-      }
+        // 1. Calculate Rendered Dimensions (Simulate object-fit: cover logic)
+        const containerRatio = obj.width / obj.height;
+        const naturalRatio = img.naturalWidth / img.naturalHeight;
 
-      // 2. Prepare Context
-      ctx.save();
-      
-      // Move to Center of Canvas
-      ctx.translate(canvas.width / 2, canvas.height / 2);
+        let renderW, renderH;
+        if (containerRatio > naturalRatio) {
+          renderW = obj.width;
+          renderH = obj.width / naturalRatio;
+        } else {
+          renderH = obj.height;
+          renderW = obj.height * naturalRatio;
+        }
 
-      // 3. Apply Edits
-      const imgX = (obj as any).imageX ?? 0;
-      const imgY = (obj as any).imageY ?? 0;
-      const imgScale = (obj as any).imageScale ?? 1;
+        // 2. Prepare Context
+        ctx.save();
 
-      // Panning (based on ImageItem logic: translate(imgX * imgScale * 100 %))
-      // The % is relative to the *rendered image size* (the element size).
-      const translateX = imgX * imgScale * renderW;
-      const translateY = imgY * imgScale * renderH;
-      ctx.translate(translateX, translateY);
+        // Move to Center of Canvas
+        ctx.translate(canvas.width / 2, canvas.height / 2);
 
-      // Zoom
-      ctx.scale(imgScale, imgScale);
+        // 3. Apply Edits
+        const imgX = (obj as any).imageX ?? 0;
+        const imgY = (obj as any).imageY ?? 0;
+        const imgScale = (obj as any).imageScale ?? 1;
 
-      // Flip
-      const scaleX = obj.flipX ? -1 : 1;
-      const scaleY = obj.flipY ? -1 : 1;
-      ctx.scale(scaleX, scaleY);
+        // Panning (based on ImageItem logic: translate(imgX * imgScale * 100 %))
+        // The % is relative to the *rendered image size* (the element size).
+        const translateX = imgX * imgScale * renderW;
+        const translateY = imgY * imgScale * renderH;
+        ctx.translate(translateX, translateY);
 
-      // 4. Draw Image Centered
-      ctx.drawImage(img, -renderW / 2, -renderH / 2, renderW, renderH);
+        // Zoom
+        ctx.scale(imgScale, imgScale);
 
-      ctx.restore();
-      
-      resolve(canvas.toDataURL("image/png"));
-    };
-    img.onerror = () => resolve(obj.src);
-    img.src = obj.src;
-  });
-};
+        // Flip
+        const scaleX = obj.flipX ? -1 : 1;
+        const scaleY = obj.flipY ? -1 : 1;
+        ctx.scale(scaleX, scaleY);
+
+        // 4. Draw Image Centered
+        ctx.drawImage(img, -renderW / 2, -renderH / 2, renderW, renderH);
+
+        ctx.restore();
+
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => resolve(obj.src);
+      img.src = obj.src;
+    });
+  };
 
   const handleUseSelected = async (
     setSrc: (s: string) => void,
@@ -493,7 +493,7 @@ const flattenImageEdits = async (obj: ImageObject): Promise<string> => {
         const imgObj = selectedObject as unknown as ImageObject;
         // Flatten edits (Flip/Size) before using
         let src = await flattenImageEdits(imgObj);
-        
+
         if (isTopLayer) {
           src = await cropImageToContent(src);
         }
@@ -789,7 +789,7 @@ const flattenImageEdits = async (obj: ImageObject): Promise<string> => {
 
             <div
               ref={previewRef}
-              className="aspect-video w-full bg-muted rounded-md border flex items-center justify-center overflow-hidden bg-checkered relative cursor-move touch-none"
+              className={`aspect-video w-full bg-muted rounded-md border flex items-center justify-center overflow-hidden relative cursor-move touch-none ${bottomImg && topImg && topImgDims ? "bg-checkered" : "bg--background"}`}
               onMouseDown={handleMouseDown}
             >
               {bottomImg && topImg && topImgDims ? (
@@ -814,7 +814,7 @@ const flattenImageEdits = async (obj: ImageObject): Promise<string> => {
                   </div>
 
                   {/* Top Image */}
-                  <div 
+                  <div
                     className="absolute inset-0 w-full h-full z-10 overflow-hidden pointer-events-none"
                     style={{ mixBlendMode: blendMode as any }}
                   >
@@ -846,8 +846,8 @@ const flattenImageEdits = async (obj: ImageObject): Promise<string> => {
             {isGenerating ? "Generating..." : "Insert Blended Image"}
           </Button>
         </div>
-      </ScrollArea>
-    </div>
+      </ScrollArea >
+    </div >
   );
 };
 

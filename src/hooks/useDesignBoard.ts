@@ -396,7 +396,81 @@ export const useDesignBoard = (
   ); // Only depends on canvas size
 
   const handleDevImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // ... (Keep existing logic if needed, or remove if unused)
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const originalSrc = event.target?.result as string;
+      const img = new Image();
+      img.src = originalSrc;
+
+      img.onload = () => {
+        // 1. Convert to WebP
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0);
+
+        const webpDataUrl = canvas.toDataURL("image/webp", 0.8);
+
+        // 2. Generate Path & Filename
+        const timestamp = Date.now();
+        const filename = `img_${timestamp}.webp`;
+        // Ensure this relative path matches your folder structure exactly
+        const relativePath = `/src/assets/templates/uploads/${filename}`;
+
+        // 3. Trigger Download
+        const link = document.createElement("a");
+        link.href = webpDataUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // 4. SHOW PERSISTENT TOAST (Waits for user action)
+        toast.info("File Downloaded", {
+          description: `Move "${filename}" to 'assets/templates/uploads/' then click Add.`,
+          duration: Infinity, // Keeps toast open until you click
+          action: {
+            label: "Add to Canvas",
+            onClick: () => {
+              // 5. This code runs ONLY when you click "Add to Canvas"
+              const ratio = img.width / img.height;
+              const w = 300;
+              const h = 300 / ratio;
+              const newId = Math.random().toString(36).substr(2, 9);
+
+              const newImg: ImageObject = {
+                id: newId,
+                type: "image",
+                x: width / 2 - w / 2,
+                y: height / 2 - h / 2,
+                width: w,
+                height: h,
+                rotation: 0,
+                src: relativePath,
+                borderRadius: 0,
+                opacity: 1,
+                strokeColor: "transparent",
+                strokeWidth: 0,
+                isSticker: false,
+                imageType: "image"
+              };
+
+              const finalObjects = [...objects, newImg];
+              setObjects(finalObjects, true);
+              setSelectedIds([newId]);
+              toast.success("Image added successfully");
+            },
+          },
+        });
+      };
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   const handleClearSelection = useCallback(() => {
@@ -862,7 +936,7 @@ export const useDesignBoard = (
     handleAddText,
     handleAddImage,
     handleAddSticker,
-    handleDevImageUpload: handleAddImage, // reuse image logic for now or keep separate if needed
+    handleDevImageUpload,
     updateObject,
     handleLayerSelect,
     handleFit,

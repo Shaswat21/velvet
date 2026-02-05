@@ -122,6 +122,7 @@ export default function DesignBoard({
       bgColor: board.bgColor,
       timestamp: Date.now(),
     };
+    localStorage.setItem("velvet_autosave", JSON.stringify(stateToSave));
   }, [board.objects, board.bgColor, paper, orientation]);
 
   const handleCloseToolbar = () => {
@@ -395,7 +396,7 @@ export default function DesignBoard({
         isGroupSelected={
           board.selectedIds.length === 1 &&
           board.objects.find((o) => o.id === board.selectedIds[0])?.type ===
-            "group"
+          "group"
         }
         isLayersOpen={isLayersOpen}
         setIsLayersOpen={setIsLayersOpen}
