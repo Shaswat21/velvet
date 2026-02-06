@@ -39,8 +39,8 @@ export const TransformWrapper = ({
   const effectivePointerEvents = pointerEvents
     ? pointerEvents
     : tool === "select"
-    ? "auto"
-    : "none";
+      ? "auto"
+      : "none";
 
   const shouldShowHandles = (isSelected && tool === "select") || isEditing;
 
@@ -122,8 +122,8 @@ export const TransformWrapper = ({
           tool !== "select"
             ? "crosshair"
             : obj.isLocked || (obj.type == "image" && obj.isBackground)
-            ? "default"
-            : "move",
+              ? "default"
+              : "move",
         zIndex: isEditing ? 50 : "auto",
       }}
       className="group"
@@ -132,9 +132,8 @@ export const TransformWrapper = ({
 
       {shouldShowHandles && !hideResizeHandles && (
         <div
-          className={`absolute inset-0 pointer-events-none ${
-            isEditing ? "" : "border-2 border-blue-500"
-          }`}
+          className={`absolute inset-0 pointer-events-none ${isEditing ? "" : "border-2 border-blue-500"
+            }`}
         >
           {obj.isLocked ? (
             <div className="absolute -top-3 -left-3 bg-gray-100 border border-gray-400 p-1 rounded-sm shadow-sm pointer-events-auto z-50">

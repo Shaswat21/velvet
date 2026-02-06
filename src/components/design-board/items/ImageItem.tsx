@@ -267,12 +267,11 @@ export const ImageItem = ({
 
   // Combine transforms: Position/Scale -> Flip
   // We apply the flip AFTER the translation/scale so it flips in place visually
-  const imageTransform = `translate(-50%, -50%) translate(${
-    imgX * Math.round(imgScale * 100)
-  }%, ${imgY * Math.round(imgScale * 100)}%) scale(${Math.max(
-    1,
-    imgScale,
-  )}) ${flipTransform}`;
+  const imageTransform = `translate(-50%, -50%) translate(${imgX * Math.round(imgScale * 100)
+    }%, ${imgY * Math.round(imgScale * 100)}%) scale(${Math.max(
+      1,
+      imgScale,
+    )}) ${flipTransform}`;
 
   const imageStyle: React.CSSProperties = {
     position: "absolute",

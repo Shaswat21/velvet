@@ -34,24 +34,26 @@ export const Footer = ({
   };
 
   return (
-    <footer className="px-4 py-3 bg-white border-t flex items-center justify-end z-40 relative">
+    <footer className="px-4 py-3 bg-white border-t flex items-center justify-between md:justify-end z-40 relative">
       <div className="flex items-center gap-3">
-        {/* Zoom Slider */}
-        <Slider
-          value={zoom}
-          onValueChange={setZoom}
-          min={10}
-          max={300}
-          step={1}
-          className="w-32"
-        />
+        {/* Zoom Slider - Hidden on Mobile */}
+        <div className="hidden md:block">
+          <Slider
+            value={zoom}
+            onValueChange={setZoom}
+            min={10}
+            max={300}
+            step={1}
+            className="w-32"
+          />
+        </div>
 
         {/* Zoom Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              className="h-8 w-20 px-2 text-xs flex font-normal"
+              className="h-8 w-16 md:w-20 px-2 text-xs flex font-normal"
             >
               {Math.round(zoom[0])}%
             </Button>

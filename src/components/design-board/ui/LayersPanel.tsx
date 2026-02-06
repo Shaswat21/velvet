@@ -76,7 +76,7 @@ export const LayersPanel = ({
   return (
     <div
       className={`
-        fixed top-16 bottom-14.25 right-0 w-64 bg-white shadow-xl border-l z-40 transform transition-transform duration-300 ease-in-out flex flex-col
+        fixed top-16 bottom-14.25 right-0 w-64 max-md:w-full bg-white shadow-xl border-l z-40 transform transition-transform duration-300 ease-in-out flex flex-col
         ${isOpen ? "translate-x-0" : "translate-x-full"}
       `}
     >

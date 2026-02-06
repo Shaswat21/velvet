@@ -1002,7 +1002,7 @@ export const LibraryPanel = ({
   return (
     <div
       className={cn(
-        "fixed top-16 bottom-14 left-0 w-80 bg-white shadow-xl border-r z-40 flex flex-col overflow-hidden transition-transform duration-300 ease-in-out",
+        "fixed top-16 bottom-14 left-0 w-80 max-md:w-full bg-white shadow-xl border-r z-40 flex flex-col overflow-hidden transition-transform duration-300 ease-in-out",
         isOpen ? "translate-x-0" : "-translate-x-full",
       )}
     >

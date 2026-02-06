@@ -470,7 +470,7 @@ export const CanvasArea = ({
                 )}
                 {selectedIds.length === 1 &&
                   objects.find((o) => o.id === selectedIds[0])?.type ===
-                    "group" && (
+                  "group" && (
                     <ContextMenuItem onClick={onUngroup}>
                       Ungroup
                     </ContextMenuItem>

@@ -143,8 +143,8 @@ export const TextItem = ({
             pointerEvents: isDisabled
               ? "none"
               : pointerEvents === "none"
-              ? "none"
-              : "auto",
+                ? "none"
+                : "auto",
           }}
         />
       </div>

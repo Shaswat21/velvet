@@ -96,8 +96,8 @@ export const RectItem = ({
   const containerStyle = isLiquid
     ? liquidStyle
     : isGlass
-    ? glassStyle
-    : standardStyle;
+      ? glassStyle
+      : standardStyle;
 
   return (
     <TransformWrapper
@@ -158,9 +158,8 @@ export const RectItem = ({
               style={{
                 borderRadius: `${borderRadius}px`,
                 // Scale the inset shadow parameters
-                boxShadow: `inset 0 0 ${20 * zoomFactor}px ${
-                  -5 * zoomFactor
-                }px rgba(255, 255, 255, 0.7)`,
+                boxShadow: `inset 0 0 ${20 * zoomFactor}px ${-5 * zoomFactor
+                  }px rgba(255, 255, 255, 0.7)`,
                 backgroundColor: "rgba(255, 255, 255, 0.4)",
               }}
             />

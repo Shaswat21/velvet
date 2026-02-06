@@ -109,11 +109,11 @@ export const Toolbar = ({
           flex items-center justify-center gap-2 p-2 
           rounded-lg
           transition-all duration-300 ease-in-out
-          ${
-            !isClosingToolbar
-              ? "translate-y-0 opacity-100"
-              : "-translate-y-full opacity-0 pointer-events-none"
-          }
+          max-w-[95vw] overflow-x-auto scrollbar-hide
+          ${!isClosingToolbar
+          ? "translate-y-0 opacity-100"
+          : "-translate-y-full opacity-0 pointer-events-none"
+        }
       `}
     >
       {/* ================= TEXT TOOLBAR ================= */}
@@ -299,11 +299,10 @@ export const Toolbar = ({
                     {HIGHLIGHT_COLORS.map((color) => (
                       <button
                         key={color}
-                        className={`w-7 h-7 rounded-full border transition-transform hover:scale-110 ${
-                          textObj.backgroundColor === color
+                        className={`w-7 h-7 rounded-full border transition-transform hover:scale-110 ${textObj.backgroundColor === color
                             ? "ring-2 ring-blue-500"
                             : ""
-                        }`}
+                          }`}
                         style={{
                           backgroundColor: color,
                           backgroundImage:
@@ -331,9 +330,8 @@ export const Toolbar = ({
         <>
           {/* FILL COLOR - Disabled if Effect Active */}
           <div
-            className={`flex items-center gap-2 mr-2 ${
-              isEffectActive ? "opacity-40 pointer-events-none" : ""
-            }`}
+            className={`flex items-center gap-2 mr-2 ${isEffectActive ? "opacity-40 pointer-events-none" : ""
+              }`}
           >
             <span className="text-[10px] uppercase font-bold text-gray-400">
               Fill
@@ -350,9 +348,8 @@ export const Toolbar = ({
 
           {/* BORDER - Disabled if Effect Active */}
           <div
-            className={`flex items-center gap-2 mr-2 ${
-              isEffectActive ? "opacity-40 pointer-events-none" : ""
-            }`}
+            className={`flex items-center gap-2 mr-2 ${isEffectActive ? "opacity-40 pointer-events-none" : ""
+              }`}
           >
             <span className="text-[10px] uppercase font-bold text-gray-400">
               Border
@@ -398,9 +395,8 @@ export const Toolbar = ({
               <Button
                 size="icon"
                 variant={selectedObject.shadow ? "secondary" : "ghost"}
-                className={`h-8 w-8 rounded-sm ${
-                  selectedObject.shadow ? "bg-blue-100 text-blue-600" : ""
-                }`}
+                className={`h-8 w-8 rounded-sm ${selectedObject.shadow ? "bg-blue-100 text-blue-600" : ""
+                  }`}
                 title="Drop Shadow"
               >
                 <BoxSelect className="h-4 w-4" />
@@ -665,9 +661,8 @@ export const Toolbar = ({
           <Button
             size="icon"
             variant={selectedObject.opacity < 1 ? "secondary" : "ghost"}
-            className={`h-8 w-8 rounded-sm ${
-              selectedObject.opacity < 1 ? "bg-blue-100 text-blue-600" : ""
-            } ${rectObj?.isLiquid ? "opacity-40 pointer-events-none" : ""}`}
+            className={`h-8 w-8 rounded-sm ${selectedObject.opacity < 1 ? "bg-blue-100 text-blue-600" : ""
+              } ${rectObj?.isLiquid ? "opacity-40 pointer-events-none" : ""}`}
             title="Opacity"
           >
             <Droplets className="h-4 w-4" />
@@ -702,9 +697,8 @@ export const Toolbar = ({
               <Button
                 size="icon"
                 variant={selectedObject.blur ? "secondary" : "ghost"}
-                className={`h-8 w-8 rounded-sm ${
-                  selectedObject.blur ? "bg-blue-100 text-blue-600" : ""
-                }`}
+                className={`h-8 w-8 rounded-sm ${selectedObject.blur ? "bg-blue-100 text-blue-600" : ""
+                  }`}
                 title="Blur Effects"
               >
                 <Activity className="h-4 w-4" />
@@ -848,31 +842,31 @@ export const Toolbar = ({
       {(selectedObject.type === "rect" ||
         selectedObject.type === "image" ||
         selectedObject.type === "path") && (
-        <div className="flex items-center gap-2">
-          <div className="flex items-center h-8 border rounded-md px-2 bg-white gap-2">
-            <MoveVertical className="h-3 w-3 text-gray-400" />
-            <input
-              type="number"
-              value={selectedObject.width}
-              onChange={(e) =>
-                updateSelected({ width: Math.round(Number(e.target.value)) })
-              }
-              className="w-12 text-xs text-center outline-none bg-transparent"
-            />
+          <div className="flex items-center gap-2">
+            <div className="flex items-center h-8 border rounded-md px-2 bg-white gap-2">
+              <MoveVertical className="h-3 w-3 text-gray-400" />
+              <input
+                type="number"
+                value={selectedObject.width}
+                onChange={(e) =>
+                  updateSelected({ width: Math.round(Number(e.target.value)) })
+                }
+                className="w-12 text-xs text-center outline-none bg-transparent"
+              />
+            </div>
+            <div className="flex items-center h-8 border rounded-md px-2 bg-white gap-2">
+              <MoveVertical className="h-3 w-3 text-gray-400 rotate-90" />
+              <input
+                type="number"
+                value={selectedObject.height}
+                onChange={(e) =>
+                  updateSelected({ height: Math.round(Number(e.target.value)) })
+                }
+                className="w-12 text-xs text-center outline-none bg-transparent"
+              />
+            </div>
           </div>
-          <div className="flex items-center h-8 border rounded-md px-2 bg-white gap-2">
-            <MoveVertical className="h-3 w-3 text-gray-400 rotate-90" />
-            <input
-              type="number"
-              value={selectedObject.height}
-              onChange={(e) =>
-                updateSelected({ height: Math.round(Number(e.target.value)) })
-              }
-              className="w-12 text-xs text-center outline-none bg-transparent"
-            />
-          </div>
-        </div>
-      )}
+        )}
 
       {/* Rotation (All Objects) */}
       <div className="flex items-center h-8 border rounded-md px-2 bg-white gap-1 ml-2">

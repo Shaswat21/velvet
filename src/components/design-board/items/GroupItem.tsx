@@ -63,12 +63,12 @@ export const GroupItem = ({ obj, innerRef, ...props }: GroupItemProps) => {
               zoom: props.zoom,
               isSelected: false,
               tool: props.tool,
-              setDragTarget: () => {},
-              setSelectedId: () => {},
-              addSelectedId: () => {},
-              setResizingTarget: () => {},
-              setRotatingTarget: () => {},
-              onUpdate: () => {},
+              setDragTarget: () => { },
+              setSelectedId: () => { },
+              addSelectedId: () => { },
+              setResizingTarget: () => { },
+              setRotatingTarget: () => { },
+              onUpdate: () => { },
               pointerEvents: "auto" as const,
               onMouseDown: handleGroupInteraction,
               isGrouped: true,
@@ -76,7 +76,7 @@ export const GroupItem = ({ obj, innerRef, ...props }: GroupItemProps) => {
 
             if (child.type === "text")
               return (
-                <TextItem obj={child} {...commonProps} onUpdate={() => {}} />
+                <TextItem obj={child} {...commonProps} onUpdate={() => { }} />
               );
             if (child.type === "rect")
               return <RectItem obj={child} {...commonProps} />;
@@ -85,7 +85,7 @@ export const GroupItem = ({ obj, innerRef, ...props }: GroupItemProps) => {
                 <ImageItem
                   obj={child}
                   {...commonProps}
-                  updateObject={() => {}}
+                  updateObject={() => { }}
                 />
               );
             return null;
