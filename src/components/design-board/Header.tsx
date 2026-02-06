@@ -125,6 +125,7 @@ const ActionButtons = ({
       size="sm"
       className={`h-8 gap-2 px-3 text-xs ${isMobile ? "justify-start" : ""}`}
       onClick={onAddImageClick}
+      onContextMenu={onAddImageClick}
     >
       <ImageIcon className="h-3.5 w-3.5" /> Add Image
     </Button>
