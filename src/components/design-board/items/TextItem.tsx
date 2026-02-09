@@ -1,6 +1,7 @@
-import { useRef, useLayoutEffect } from "react";
+import { useRef, useLayoutEffect, useState } from "react";
 import { TransformWrapper } from "./TransformWrapper";
 import type { TextObject, ToolType } from "@/lib/types";
+import { useTransliteration } from "@/hooks/useTransliteration";
 
 interface TextItemProps {
   obj: TextObject;
@@ -98,6 +99,90 @@ export const TextItem = ({
       .filter(Boolean)
       .join(" ") || "none";
 
+  // --- Transliteration Logic ---
+  const {
+    suggestions,
+    fetchSuggestions,
+    setSuggestions, // We might need to clear it manually
+    currentWord,
+    setCurrentWord
+  } = useTransliteration(
+    !!(obj.transliterationEnabled),
+    obj.transliterationLanguage
+  );
+
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    onUpdate(obj.id, { text: val });
+
+    if (!obj.transliterationEnabled) return;
+
+    // Detect current word being typed
+    const cursor = e.target.selectionEnd;
+    const textBeforeCursor = val.slice(0, cursor);
+    const words = textBeforeCursor.split(/\s+/);
+    const lastWord = words[words.length - 1];
+
+    if (lastWord && /^[a-zA-Z]+$/.test(lastWord)) {
+      setCurrentWord(lastWord);
+      fetchSuggestions(lastWord);
+
+      // Calculate cursor position for popup
+      // Simple approximation or we could use a library like 'textarea-caret' if needed
+      // For now, let's just show it below the textarea or fixed for simplicity
+    } else {
+      setSuggestions([]);
+      setCurrentWord("");
+    }
+  };
+
+  const applySuggestion = (suggestion: string) => {
+    if (!currentWord) return;
+
+    // Replace the last occurrence of currentWord with suggestion
+    const cursor = textAreaRef.current?.selectionEnd || 0;
+    const textBefore = obj.text.slice(0, cursor);
+    const textAfter = obj.text.slice(cursor);
+
+    const lastIndex = textBefore.lastIndexOf(currentWord);
+    if (lastIndex === -1) return;
+
+    const newTextBefore = textBefore.substring(0, lastIndex) + suggestion + " ";
+    const newText = newTextBefore + textAfter;
+
+    onUpdate(obj.id, { text: newText });
+    setSuggestions([]);
+    setCurrentWord("");
+
+    // Restore focus and update cursor position (needs setTimeout or LayoutEffect)
+    setTimeout(() => {
+      if (textAreaRef.current) {
+        textAreaRef.current.focus();
+        const newCursorPos = newTextBefore.length;
+        textAreaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 0);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (suggestions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev + 1) % suggestions.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
+      } else if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        applySuggestion(suggestions[selectedIndex]);
+      } else if (e.key === "Escape") {
+        setSuggestions([]);
+      }
+    }
+  };
+
   return (
     <TransformWrapper
       obj={obj}
@@ -109,11 +194,12 @@ export const TextItem = ({
       pointerEvents={pointerEvents}
       onMouseDown={onMouseDown || handleMouseDown}
     >
-      <div ref={innerRef} className="w-full h-full">
+      <div ref={innerRef} className="w-full h-full relative">
         <textarea
           ref={textAreaRef}
           value={obj.text}
-          onChange={(e) => onUpdate(obj.id, { text: e.target.value })}
+          onChange={handleTextChange}
+          onKeyDown={handleKeyDown}
           readOnly={isDisabled}
           className={`
             w-full bg-transparent resize-none overflow-hidden leading-normal
@@ -147,6 +233,27 @@ export const TextItem = ({
                 : "auto",
           }}
         />
+
+        {/* Suggestion Dropdown */}
+        {suggestions.length > 0 && isSelected && !isDisabled && (
+          <div
+            className="absolute z-50 bg-white border border-gray-200 shadow-lg rounded-md overflow-hidden min-w-[150px]"
+            style={{
+              top: "100%",
+              left: 0 // Ideally this should follow the caret but simplifying for now
+            }}
+          >
+            {suggestions.map((s, i) => (
+              <div
+                key={s}
+                className={`px-3 py-2 cursor-pointer text-sm ${i === selectedIndex ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"}`}
+                onClick={() => applySuggestion(s)}
+              >
+                {s}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </TransformWrapper>
   );

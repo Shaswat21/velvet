@@ -2,7 +2,9 @@ import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -37,13 +39,15 @@ import {
   // --- NEW ICONS ---
   FlipHorizontal,
   FlipVertical,
+  Languages,
 } from "lucide-react";
 import { ColorPicker } from "./ui/ColorPicker";
-import { FONTS, HIGHLIGHT_COLORS } from "@/lib/constants";
+import { FONT_GROUPS, HIGHLIGHT_COLORS } from "@/lib/constants";
 import type { CanvasObject, TextObject } from "@/lib/types";
 import { FancySlider } from "./ui/FancySlider";
 import { Toggle } from "../ui/toggle";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
+import { INDIAN_LANGUAGES } from "@/hooks/useTransliteration";
 
 interface ToolbarProps {
   selectedObject: CanvasObject | undefined;
@@ -119,6 +123,64 @@ export const Toolbar = ({
       {/* ================= TEXT TOOLBAR ================= */}
       {isText && textObj && (
         <>
+          {/* ================= TRANSLITERATION TOOLBAR ================= */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                size="icon"
+                variant={textObj.transliterationEnabled ? "secondary" : "ghost"}
+                className={`h-8 w-8 rounded-sm ${textObj.transliterationEnabled ? "bg-accent text-accent-foreground" : ""}`}
+                title="Transliteration"
+              >
+                <Languages className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-4" sideOffset={5}>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <span className="text-sm font-semibold">Transliteration</span>
+                  <Toggle
+                    pressed={!!textObj.transliterationEnabled}
+                    onPressedChange={(pressed) => {
+                      updateSelected({ transliterationEnabled: pressed });
+                    }}
+                    size="sm"
+                    className="h-6 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                  >
+                    {textObj.transliterationEnabled ? "On" : "Off"}
+                  </Toggle>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-xs text-muted-foreground font-bold uppercase">Language</span>
+                  <Select
+                    value={textObj.transliterationLanguage || "hi-t-i0-und"}
+                    onValueChange={(val) => {
+                      const selectedLang = INDIAN_LANGUAGES.find(l => l.code === val);
+                      updateSelected({
+                        transliterationLanguage: val,
+                        fontFamily: selectedLang?.font || textObj.fontFamily
+                      });
+                    }}
+                    disabled={!textObj.transliterationEnabled}
+                  >
+                    <SelectTrigger className="w-full text-xs">
+                      <SelectValue placeholder="Select Language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INDIAN_LANGUAGES.map((lang) => (
+                        <SelectItem key={lang.code} value={lang.code}>
+                          {lang.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <div className="h-6 w-px bg-gray-300 mx-1"></div>
           {/* FONT FAMILY */}
           <Select
             value={textObj.fontFamily}
@@ -128,10 +190,17 @@ export const Toolbar = ({
               <SelectValue placeholder="Font" />
             </SelectTrigger>
             <SelectContent>
-              {FONTS.map((f) => (
-                <SelectItem key={f} value={f}>
-                  {f}
-                </SelectItem>
+              {Object.entries(FONT_GROUPS).map(([group, fonts]) => (
+                <SelectGroup key={group}>
+                  <SelectLabel className="text-[10px] font-bold text-gray-400 px-2 py-1 uppercase tracking-wider bg-gray-50/50 sticky top-0 z-10 backdrop-blur-sm">
+                    {group}
+                  </SelectLabel>
+                  {fonts.map((f) => (
+                    <SelectItem key={f} value={f} className="pl-6">
+                      <span style={{ fontFamily: f }}>{f}</span>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               ))}
             </SelectContent>
           </Select>
@@ -300,8 +369,8 @@ export const Toolbar = ({
                       <button
                         key={color}
                         className={`w-7 h-7 rounded-full border transition-transform hover:scale-110 ${textObj.backgroundColor === color
-                            ? "ring-2 ring-blue-500"
-                            : ""
+                          ? "ring-2 ring-blue-500"
+                          : ""
                           }`}
                         style={{
                           backgroundColor: color,
@@ -324,6 +393,8 @@ export const Toolbar = ({
           </Popover>
         </>
       )}
+
+
 
       {/* ================= RECT (SHAPE) TOOLBAR ================= */}
       {selectedObject.type === "rect" && (

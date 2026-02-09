@@ -37,56 +37,76 @@ export const PAPER_SIZES: Record<PaperKey, { w: number; h: number }> = {
 };
 
 export const ZOOM_PRESETS = [300, 200, 150, 100, 75, 50, 25, 10];
-export const FONTS = [
-  "Allura", // Stylish Script
-  "Amatic SC", // Handwritten
-  "Arial",
-  "Bodoni Moda", // High-fashion Serif
-  "Bookman",
-  "Brush Script MT",
-  "Caveat", // Handwritten
-  "Cinzel", // Elegant/Roman
-  "Comic Sans MS",
-  "Consolas",
-  "Copperplate",
-  "Cormorant Garamond", // Elegant Serif
-  "Courier",
-  "Courier New",
-  "Dancing Script", // Casual Script
-  "Fira Code",
-  "Garamond",
-  "Georgia",
-  "Gill Sans",
-  "Great Vibes", // Formal Script
-  "Helvetica",
-  "Impact",
-  "Inter",
-  "Lato",
-  "Lora",
-  "Lucida Console",
-  "Lucida Handwriting",
-  "Menlo",
-  "Merriweather",
-  "Monaco",
-  "Montserrat",
-  "Nunito", // Rounded Sans
-  "Open Sans",
-  "Pacifico", // Retro Script
-  "Palatino",
-  "Papyrus",
-  "Pinyon Script", // Romantic Script
-  "Playfair Display",
-  "Poppins",
-  "Quicksand", // Rounded
-  "Raleway", // Elegant Sans
-  "Roboto",
-  "Sacramento", // Monoline Script
-  "Satisfy", // Brush Script
-  "Tahoma",
-  "Times New Roman",
-  "Trebuchet MS",
-  "Verdana",
-];
+// Font Groups for organized display
+export const FONT_GROUPS = {
+  "Handwritten & Script": [
+    "Allura",
+    "Amatic SC",
+    "Brush Script MT",
+    "Caveat",
+    "Dancing Script",
+    "Great Vibes",
+    "Kalam", // Indian/Latin
+    "Lucida Handwriting",
+    "Pacifico",
+    "Pinyon Script",
+    "Sacramento",
+    "Satisfy",
+  ],
+  "Sans Serif": [
+    "Arial",
+    "Baloo 2", // Indian/Latin
+    "Fira Code", // Monospace
+    "Gill Sans",
+    "Helvetica",
+    "Impact",
+    "Inter",
+    "Lato",
+    "Lucida Console",
+    "Menlo",
+    "Monaco",
+    "Montserrat",
+    "Nunito",
+    "Open Sans",
+    "Poppins",
+    "Quicksand",
+    "Raleway",
+    "Roboto",
+    "Tahoma",
+    "Trebuchet MS",
+    "Verdana",
+  ],
+  "Serif": [
+    "Bodoni Moda",
+    "Bookman",
+    "Cinzel",
+    "Copperplate",
+    "Cormorant Garamond",
+    "Courier",
+    "Courier New",
+    "Garamond",
+    "Georgia",
+    "Lora",
+    "Merriweather",
+    "Palatino",
+    "Papyrus",
+    "Playfair Display",
+    "Times New Roman",
+  ],
+  "Indian Languages": [
+    "Tiro Devanagari Hindi", // Hindi, Marathi, Sanskrit
+    "Tiro Bangla",          // Bengali, Assamese
+    "Tiro Tamil",           // Tamil
+    "Tiro Telugu",          // Telugu
+    "Tiro Kannada",         // Kannada
+    "Tiro Malayalam",       // Malayalam
+    "Tiro Gurmukhi",        // Punjabi
+    "Noto Sans Gujarati",   // Gujarati
+  ]
+};
+
+// Flattened list for backward compatibility and validation
+export const FONTS = Object.values(FONT_GROUPS).flat().sort();
 export const PRESET_COLORS = [
   "transparent",
   "#ffffff",

@@ -36,6 +36,8 @@ export interface TextObject extends BaseObject {
   textTransform: "none" | "uppercase" | "lowercase" | "capitalize";
   letterSpacing: number;
   lineHeight: number;
+  transliterationEnabled?: boolean;
+  transliterationLanguage?: string;
 }
 
 export interface RectObject extends BaseObject {
