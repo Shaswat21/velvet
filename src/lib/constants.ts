@@ -57,7 +57,6 @@ export const FONT_GROUPS = {
   ],
   "Sans Serif": [
     "Arial",
-    "Baloo 2", // Indian/Latin
     "Fira Code", // Monospace
     "Gill Sans",
     "Helvetica",
@@ -94,21 +93,217 @@ export const FONT_GROUPS = {
     "Papyrus",
     "Playfair Display",
     "Times New Roman",
-  ],
-  "Indian Languages": [
-    "Tiro Devanagari Hindi", // Hindi, Marathi, Sanskrit
-    "Tiro Bangla",          // Bengali, Assamese
-    "Tiro Tamil",           // Tamil
-    "Tiro Telugu",          // Telugu
-    "Tiro Kannada",         // Kannada
-    "Tiro Malayalam",       // Malayalam
-    "Tiro Gurmukhi",        // Punjabi
-    "Noto Sans Gujarati",   // Gujarati
   ]
 };
 
 // Flattened list for backward compatibility and validation
 export const FONTS = Object.values(FONT_GROUPS).flat().sort();
+
+// -------------------------------------------------------
+// Per-language Indian fonts (loaded dynamically on demand)
+// Keyed by transliteration language code from useTransliteration.ts
+// -------------------------------------------------------
+export type IndianLanguageCode =
+  | 'hi-t-i0-und'
+  | 'mr-t-i0-und'
+  | 'ne-t-i0-und'
+  | 'sa-t-i0-und'
+  | 'bn-t-i0-und'
+  | 'gu-t-i0-und'
+  | 'kn-t-i0-und'
+  | 'ml-t-i0-und'
+  | 'pa-t-i0-und'
+  | 'ta-t-i0-und'
+  | 'te-t-i0-und'
+  | 'ur-t-i0-und';
+
+export interface IndianFontMeta {
+  family: string;       // CSS font-family name
+  label: string;        // Display label
+  style: string;        // e.g. "Serif", "Handwriting", "Display"
+  googleName?: string;  // Google Fonts URL name (if different from family)
+}
+
+export const SCRIPT_SAMPLES: Record<IndianLanguageCode, string> = {
+  'hi-t-i0-und': 'हिन्दी',
+  'mr-t-i0-und': 'मराठी',
+  'ne-t-i0-und': 'नेपाली',
+  'sa-t-i0-und': 'संस्कृत',
+  'bn-t-i0-und': 'বাংলা',
+  'gu-t-i0-und': 'ગુજરાતી',
+  'kn-t-i0-und': 'ಕನ್ನಡ',
+  'ml-t-i0-und': 'മലയാളം',
+  'pa-t-i0-und': 'ਪੰਜਾਬੀ',
+  'ta-t-i0-und': 'தமிழ்',
+  'te-t-i0-und': 'తెలుగు',
+  'ur-t-i0-und': 'اردو',
+};
+
+export const INDIAN_LANGUAGE_FONTS: Record<IndianLanguageCode, IndianFontMeta[]> = {
+
+  // ── Hindi / Devanagari ──────────────────────────────────────────
+  'hi-t-i0-und': [
+    { family: 'Tiro Devanagari Hindi',    label: 'Tiro',         style: 'Serif' },
+    { family: 'Hind',                      label: 'Hind',         style: 'Sans' },
+    { family: 'Rozha One',                 label: 'Rozha One',    style: 'Display' },
+    { family: 'Yatra One',                 label: 'Yatra One',    style: 'Display' },
+    { family: 'Khand',                     label: 'Khand',        style: 'Condensed' },
+    { family: 'Noto Serif Devanagari',     label: 'Noto Serif',   style: 'Serif' },
+    { family: 'Noto Sans Devanagari',      label: 'Noto Sans',    style: 'Sans' },
+    { family: 'Martel',                    label: 'Martel',       style: 'Serif' },
+    { family: 'Kalam',                     label: 'Kalam',        style: 'Handwriting' },
+    { family: 'Teko',                      label: 'Teko',         style: 'Bold Display' },
+    { family: 'Rajdhani',                  label: 'Rajdhani',     style: 'Industrial' },
+  ],
+
+  // ── Marathi — Devanagari script ─────────────────────────────────
+  'mr-t-i0-und': [
+    { family: 'Tiro Devanagari Hindi',     label: 'Tiro',         style: 'Serif' },
+    { family: 'Hind',                      label: 'Hind',         style: 'Sans' },
+    { family: 'Rozha One',                 label: 'Rozha One',    style: 'Display' },
+    { family: 'Yatra One',                 label: 'Yatra One',    style: 'Display' },
+    { family: 'Noto Serif Devanagari',     label: 'Noto Serif',   style: 'Serif' },
+    { family: 'Noto Sans Devanagari',      label: 'Noto Sans',    style: 'Sans' },
+    { family: 'Martel',                    label: 'Martel',       style: 'Serif' },
+    { family: 'Khand',                     label: 'Khand',        style: 'Condensed' },
+  ],
+
+  // ── Nepali — Devanagari script ─────────────────────────────────
+  'ne-t-i0-und': [
+    { family: 'Tiro Devanagari Hindi',    label: 'Tiro',         style: 'Serif' },
+    { family: 'Hind',                      label: 'Hind',         style: 'Sans' },
+    { family: 'Noto Serif Devanagari',     label: 'Noto Serif',   style: 'Serif' },
+    { family: 'Noto Sans Devanagari',      label: 'Noto Sans',    style: 'Sans' },
+    { family: 'Rozha One',                 label: 'Rozha One',    style: 'Display' },
+    { family: 'Martel',                    label: 'Martel',       style: 'Serif' },
+    { family: 'Yatra One',                 label: 'Yatra One',    style: 'Display' },
+  ],
+
+  // ── Sanskrit — Devanagari script ────────────────────────────────
+  'sa-t-i0-und': [
+    { family: 'Tiro Devanagari Hindi',     label: 'Tiro',         style: 'Serif' },
+    { family: 'Noto Serif Devanagari',     label: 'Noto Serif',   style: 'Serif' },
+    { family: 'Martel',                    label: 'Martel',       style: 'Serif' },
+    { family: 'Hind',                      label: 'Hind',         style: 'Sans' },
+    { family: 'Noto Sans Devanagari',      label: 'Noto Sans',    style: 'Sans' },
+    { family: 'Rozha One',                 label: 'Rozha One',    style: 'Display' },
+    { family: 'Yatra One',                 label: 'Yatra One',    style: 'Display' },
+  ],
+
+  // ── Bengali ───────────────────────────────────────────────────
+  'bn-t-i0-und': [
+    { family: 'Tiro Bangla',               label: 'Tiro Bangla',  style: 'Serif' },
+    { family: 'Hind Siliguri',             label: 'Hind Siliguri',style: 'Sans' },
+    { family: 'Noto Sans Bengali',         label: 'Noto Sans',    style: 'Sans' },
+    { family: 'Noto Serif Bengali',        label: 'Noto Serif',   style: 'Serif' },
+    { family: 'Atma',                      label: 'Atma',         style: 'Display' },
+    { family: 'Galada',                    label: 'Galada',       style: 'Script' },
+    { family: 'Anek Bangla',               label: 'Anek Bangla',  style: 'Display' },
+    { family: 'Mina',                      label: 'Mina',         style: 'Sans' },
+  ],
+
+  // ── Gujarati ──────────────────────────────────────────────────
+  'gu-t-i0-und': [
+    { family: 'Noto Sans Gujarati',        label: 'Noto Sans',    style: 'Sans' },
+    { family: 'Noto Serif Gujarati',       label: 'Noto Serif',   style: 'Serif' },
+    { family: 'Hind Vadodara',             label: 'Hind Vadodara',style: 'UI Sans' },
+    { family: 'Mukta Vaani',               label: 'Mukta Vaani',  style: 'Humanist Sans' },
+    { family: 'Mogra',                     label: 'Mogra',        style: 'Script Display' },
+    { family: 'Anek Gujarati',             label: 'Anek',         style: 'Variable Display' },
+    { family: 'Rasa',                      label: 'Rasa',         style: 'Serif' },
+    { family: 'Shrikhand',                 label: 'Shrikhand',    style: 'Display' },
+    { family: 'Farsan',                    label: 'Farsan',       style: 'Decorative Display' },
+    { family: 'Kumar One',                 label: 'Kumar One',    style: 'Bold Display' },
+  ],
+
+  // ── Kannada ───────────────────────────────────────────────────
+  'kn-t-i0-und': [
+    { family: 'Tiro Kannada',              label: 'Tiro',         style: 'Serif' },
+    { family: 'Noto Sans Kannada',         label: 'Noto Sans',    style: 'Sans' },
+    { family: 'Noto Serif Kannada',        label: 'Noto Serif',   style: 'Serif' },
+    { family: 'Akaya Kanadaka',            label: 'Akaya',        style: 'Display' },
+    { family: 'Anek Kannada',              label: 'Anek',         style: 'Display' },
+    { family: 'Padyakke Expanded One',     label: 'Padyakke',     style: 'Display' },
+    { family: 'Benne',                     label: 'Benne',        style: 'Serif' },
+    { family: 'Hubballi',                  label: 'Hubballi',     style: 'Modern' },
+    { family: 'Noto Sans Kannada UI',      label: 'Noto UI',      style: 'Sans' },
+  ],
+
+  // ── Malayalam ─────────────────────────────────────────────────
+  'ml-t-i0-und': [
+    { family: 'Tiro Malayalam',            label: 'Tiro',         style: 'Serif' },
+    { family: 'Noto Sans Malayalam',       label: 'Noto Sans',    style: 'Sans' },
+    { family: 'Noto Serif Malayalam',      label: 'Noto Serif',   style: 'Serif' },
+    { family: 'Manjari',                   label: 'Manjari',      style: 'Rounded' },
+    { family: 'Chilanka',                  label: 'Chilanka',     style: 'Handwriting' },
+    { family: 'Gayathri',                  label: 'Gayathri',     style: 'Display' },
+    { family: 'Anek Malayalam',            label: 'Anek',         style: 'Display' },
+    { family: 'Uroob',                     label: 'Uroob',        style: 'Script' },
+  ],
+
+  // ── Punjabi (Gurmukhi) ────────────────────────────────────────
+  'pa-t-i0-und': [
+    { family: 'Tiro Gurmukhi',             label: 'Tiro',         style: 'Serif' },
+    { family: 'Noto Sans Gurmukhi',        label: 'Noto Sans',    style: 'Sans' },
+    { family: 'Noto Serif Gurmukhi',       label: 'Noto Serif',   style: 'Serif' },
+    { family: 'Mukta Mahee',               label: 'Mukta',        style: 'Sans' },
+    { family: 'Anek Gurmukhi',             label: 'Anek',         style: 'Display' },
+    { family: 'Sahitya',                   label: 'Sahitya',      style: 'Serif' },
+    { family: 'Glegoo',                    label: 'Glegoo',       style: 'Slab' },
+    { family: 'Fira Sans Condensed',       label: 'Fira',         style: 'Condensed' },
+  ],
+
+  // ── Tamil ─────────────────────────────────────────────────────
+  'ta-t-i0-und': [
+    { family: 'Tiro Tamil',                label: 'Tiro Tamil',   style: 'Serif' },
+    { family: 'Noto Sans Tamil',           label: 'Noto Sans',    style: 'Sans' },
+    { family: 'Noto Serif Tamil',          label: 'Noto Serif',   style: 'Serif' },
+    { family: 'Hind Madurai',              label: 'Hind Madurai', style: 'Sans' },
+    { family: 'Mukta Malar',               label: 'Mukta Malar',  style: 'Sans' },
+    { family: 'Kavivanar',                 label: 'Kavivanar',    style: 'Handwriting' },
+    { family: 'Anek Tamil',                label: 'Anek Tamil',   style: 'Display' },
+    { family: 'Meera Inimai',              label: 'Meera Inimai', style: 'Sans' },
+    { family: 'Catamaran',                 label: 'Catamaran',    style: 'Sans' },
+    { family: 'Arima',                     label: 'Arima',        style: 'Rounded' },
+  ],
+
+  // ── Telugu ────────────────────────────────────────────────────
+  'te-t-i0-und': [
+    { family: 'Tiro Telugu',               label: 'Tiro',         style: 'Serif' },
+    { family: 'Noto Sans Telugu',          label: 'Noto Sans',    style: 'Sans' },
+    { family: 'Noto Serif Telugu',         label: 'Noto Serif',   style: 'Serif' },
+    { family: 'Hind Guntur',               label: 'Hind',         style: 'Sans' },
+    { family: 'Anek Telugu',               label: 'Anek',         style: 'Display' },
+    { family: 'Tenali Ramakrishna',        label: 'Tenali',       style: 'Serif' },
+    { family: 'Peddana',                   label: 'Peddana',      style: 'Decorative' },
+    { family: 'Dhurjati',                  label: 'Dhurjati',     style: 'Stylized' },
+    { family: 'Suranna',                   label: 'Suranna',      style: 'Classic' },
+    { family: 'Ramabhadra',                label: 'Ramabhadra',   style: 'Block' },
+  ],
+
+  // ── Urdu (Nastaliq) ───────────────────────────────────────────
+  'ur-t-i0-und': [
+    { family: 'Noto Nastaliq Urdu',        label: 'Noto Nastaliq',style: 'Nastaliq' },
+    { family: 'Gulzar',                    label: 'Gulzar',       style: 'Nastaliq' },
+    { family: 'Lateef',                    label: 'Lateef',       style: 'Nastaliq' },
+    { family: 'Noto Sans Arabic',          label: 'Noto Sans',    style: 'Sans' },
+    { family: 'Amiri',                     label: 'Amiri',        style: 'Serif' },
+    { family: 'Scheherazade New',          label: 'Scheherazade', style: 'Serif' },
+    { family: 'Reem Kufi',                 label: 'Reem Kufi',    style: 'Display' },
+    { family: 'Mirza',                     label: 'Mirza',        style: 'Decorative' },
+    { family: 'Aref Ruqaa',                label: 'Aref Ruqaa',   style: 'Script' },
+    { family: 'Jomhuria',                  label: 'Jomhuria',     style: 'Bold Display' },
+    { family: 'Harmattan',                 label: 'Harmattan',    style: 'Modern' },
+  ],
+};
+
+// Build a Google Fonts import URL for a set of font families
+export const buildGoogleFontsUrl = (families: string[]): string => {
+  const params = families
+    .map(f => `family=${encodeURIComponent(f)}:wght@400;700`)
+    .join('&');
+  return `https://fonts.googleapis.com/css2?${params}&display=swap`;
+};
 export const PRESET_COLORS = [
   "transparent",
   "#ffffff",

@@ -13,7 +13,7 @@ export const INDIAN_LANGUAGES = [
   { code: 'sa-t-i0-und', label: 'Sanskrit', active: true, font: 'Tiro Devanagari Hindi' },
   { code: 'ta-t-i0-und', label: 'Tamil', active: true, font: 'Tiro Tamil' },
   { code: 'te-t-i0-und', label: 'Telugu', active: true, font: 'Tiro Telugu' },
-  { code: 'ur-t-i0-und', label: 'Urdu', active: true, font: 'Tiro Devanagari Hindi' }, // Fallback to Devanagari or standard system font
+  { code: 'ur-t-i0-und', label: 'Urdu', active: true, font: 'Noto Nastaliq Urdu' },
 ];
 
 export const useTransliteration = (

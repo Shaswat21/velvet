@@ -36,18 +36,19 @@ import {
   RotateCw,
   Activity,
   BoxSelect,
-  // --- NEW ICONS ---
   FlipHorizontal,
   FlipVertical,
   Languages,
 } from "lucide-react";
 import { ColorPicker } from "./ui/ColorPicker";
-import { FONT_GROUPS, HIGHLIGHT_COLORS } from "@/lib/constants";
+import { FONT_GROUPS, HIGHLIGHT_COLORS, INDIAN_LANGUAGE_FONTS, SCRIPT_SAMPLES, type IndianLanguageCode } from "@/lib/constants";
 import type { CanvasObject, TextObject } from "@/lib/types";
 import { FancySlider } from "./ui/FancySlider";
 import { Toggle } from "../ui/toggle";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import { INDIAN_LANGUAGES } from "@/hooks/useTransliteration";
+import { loadGoogleFonts } from "@/lib/loadFonts";
+import { useEffect, useMemo } from "react";
 
 interface ToolbarProps {
   selectedObject: CanvasObject | undefined;
@@ -71,6 +72,32 @@ export const Toolbar = ({
 
   const isText = selectedObject.type === "text";
   const textObj = isText ? (selectedObject as TextObject) : null;
+
+  // --- Indian Language Fonts: load on demand when language changes ---
+  const translitLangCode = textObj?.transliterationLanguage as IndianLanguageCode | undefined;
+  const isTranslitOn = !!textObj?.transliterationEnabled;
+
+  const indianFontsForLang = useMemo(() => {
+    if (!translitLangCode || !isTranslitOn) return null;
+    return INDIAN_LANGUAGE_FONTS[translitLangCode] ?? null;
+  }, [translitLangCode, isTranslitOn]);
+
+  useEffect(() => {
+    if (indianFontsForLang && indianFontsForLang.length > 0) {
+      loadGoogleFonts(indianFontsForLang.map((f) => f.family));
+    }
+  }, [indianFontsForLang]);
+
+  // Group Indian fonts by style for display
+  const indianFontGroups = useMemo(() => {
+    if (!indianFontsForLang) return null;
+    const groups: Record<string, typeof indianFontsForLang> = {};
+    for (const font of indianFontsForLang) {
+      if (!groups[font.style]) groups[font.style] = [];
+      groups[font.style].push(font);
+    }
+    return groups;
+  }, [indianFontsForLang]);
 
   // --- Alignment & Transform Logic ---
   const currentAlign = textObj?.textAlign || "left";
@@ -154,12 +181,19 @@ export const Toolbar = ({
                 <div className="space-y-2">
                   <span className="text-xs text-muted-foreground font-bold uppercase">Language</span>
                   <Select
-                    value={textObj.transliterationLanguage || "hi-t-i0-und"}
+                    value={textObj.transliterationLanguage || ""}
                     onValueChange={(val) => {
-                      const selectedLang = INDIAN_LANGUAGES.find(l => l.code === val);
+                      if (!val) return;
+                      const langFonts = INDIAN_LANGUAGE_FONTS[val as IndianLanguageCode];
+                      const primaryFont = langFonts?.[0]?.family;
+
+                      // Pre-load fonts for the new language in the background
+                      if (langFonts) loadGoogleFonts(langFonts.map(f => f.family));
+
+                      // Set the language and automatically apply the first font style
                       updateSelected({
                         transliterationLanguage: val,
-                        fontFamily: selectedLang?.font || textObj.fontFamily
+                        fontFamily: primaryFont || textObj.fontFamily
                       });
                     }}
                     disabled={!textObj.transliterationEnabled}
@@ -181,27 +215,54 @@ export const Toolbar = ({
           </Popover>
 
           <div className="h-6 w-px bg-gray-300 mx-1"></div>
-          {/* FONT FAMILY */}
+          {/* FONT FAMILY — shows per-language Indian fonts when transliteration is on */}
           <Select
             value={textObj.fontFamily}
             onValueChange={(val) => updateSelected({ fontFamily: val })}
           >
-            <SelectTrigger className="w-27.5 h-8 text-xs border-dashed bg-white">
+            <SelectTrigger className="w-32 h-8 text-xs border-dashed bg-white">
               <SelectValue placeholder="Font" />
             </SelectTrigger>
-            <SelectContent>
-              {Object.entries(FONT_GROUPS).map(([group, fonts]) => (
-                <SelectGroup key={group}>
-                  <SelectLabel className="text-[10px] font-bold text-gray-400 px-2 py-1 uppercase tracking-wider bg-gray-50/50 sticky top-0 z-10 backdrop-blur-sm">
-                    {group}
-                  </SelectLabel>
-                  {fonts.map((f) => (
-                    <SelectItem key={f} value={f} className="pl-6">
-                      <span style={{ fontFamily: f }}>{f}</span>
-                    </SelectItem>
+            <SelectContent className="max-h-80">
+              {indianFontGroups ? (
+                // ── Indian language mode: fonts grouped by style ──
+                <>
+                  <div className="text-[10px] font-bold text-indigo-500 px-3 py-1.5 uppercase tracking-wider bg-indigo-50/70 sticky top-0 z-10 backdrop-blur-sm border-b border-indigo-100">
+                    {INDIAN_LANGUAGES.find(l => l.code === translitLangCode)?.label ?? 'Indian'} Fonts
+                  </div>
+                  {Object.entries(indianFontGroups).map(([style, fonts]) => (
+                    <SelectGroup key={style}>
+                      <SelectLabel className="text-[10px] font-semibold text-gray-400 px-2 py-1 uppercase tracking-wider bg-gray-50/50">
+                        {style}
+                      </SelectLabel>
+                      {fonts.map((f) => (
+                        <SelectItem key={f.family} value={f.family} className="pl-6 py-2 leading-relaxed">
+                          <div className="flex items-center gap-2">
+                            <span style={{ fontFamily: f.family, lineHeight: 1.8, fontSize: '14px' }}>
+                              {translitLangCode ? SCRIPT_SAMPLES[translitLangCode] : f.label}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">{f.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   ))}
-                </SelectGroup>
-              ))}
+                </>
+              ) : (
+                // ── Default mode: standard font groups ──
+                Object.entries(FONT_GROUPS).map(([group, fonts]) => (
+                  <SelectGroup key={group}>
+                    <SelectLabel className="text-[10px] font-bold text-gray-400 px-2 py-1 uppercase tracking-wider bg-gray-50/50 sticky top-0 z-10 backdrop-blur-sm">
+                      {group}
+                    </SelectLabel>
+                    {fonts.map((f) => (
+                      <SelectItem key={f} value={f} className="pl-6">
+                        <span style={{ fontFamily: f }}>{f}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))
+              )}
             </SelectContent>
           </Select>
 
