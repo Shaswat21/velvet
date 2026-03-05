@@ -108,7 +108,7 @@ export const RectItem = ({
     >
       <div
         ref={innerRef}
-        className="w-full h-full relative"
+        className={`w-full h-full relative ${isGlass ? "export-glass-target" : ""}`}
         style={{
           ...containerStyle,
           borderRadius: `${borderRadius}px`,
@@ -120,6 +120,7 @@ export const RectItem = ({
           <>
             {/* DYNAMIC SVG FILTER */}
             <svg
+              xmlns="http://www.w3.org/2000/svg"
               style={{
                 position: "absolute",
                 width: 0,

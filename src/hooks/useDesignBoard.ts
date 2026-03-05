@@ -811,14 +811,14 @@ export const useDesignBoard = (
           e.preventDefault();
           e.stopPropagation();
           setZoom((prev) => [
-            Math.min(Math.max(prev[0] + -e.deltaY * 0.5, 10), 300),
+            Math.min(Math.max(prev[0] + -e.deltaY * 0.05, 10), 300),
           ]);
         }
       };
       container.addEventListener("wheel", handleWheel, { passive: false });
       return () => container.removeEventListener("wheel", handleWheel);
     }
-  }, []);
+  }, [setZoom]);
 
   useEffect(() => {
     const handleMouseMoveWrapper = (e: Event) =>

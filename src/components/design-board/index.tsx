@@ -199,6 +199,23 @@ export default function DesignBoard({
       element.style.boxShadow = "none";
     }
 
+    // Add class for CSS fallbacks
+    element.classList.add("velvet-exporting");
+
+    // Inject fallback styles for glass (frost) since backdrop-filter is dropped in foreignObject
+    let styleTag = document.getElementById("velvet-export-styles");
+    if (!styleTag) {
+      styleTag = document.createElement("style");
+      styleTag.id = "velvet-export-styles";
+      styleTag.innerHTML = `
+        .velvet-exporting .export-glass-target {
+          /* Fallback when backdrop-filter is ignored: slightly more opaque white */
+          background: rgba(255, 255, 255, 0.6) !important;
+        }
+      `;
+      document.head.appendChild(styleTag);
+    }
+
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     try {
@@ -206,6 +223,7 @@ export default function DesignBoard({
         backgroundColor: transparent ? "transparent" : board.bgColor,
         pixelRatio: compress ? 1 : 2,
         style: { transformOrigin: "top left" },
+        cacheBust: true,
       };
 
       if (format === "svg") {
@@ -360,6 +378,13 @@ export default function DesignBoard({
         element.style.border = originalBorder;
         element.style.boxShadow = originalBoxShadow;
       }
+      element.classList.remove("velvet-exporting");
+
+      const styleTag = document.getElementById("velvet-export-styles");
+      if (styleTag) {
+        styleTag.remove();
+      }
+
       board.setZoom(previousZoom);
       board.setSelectedIds(previousSelection);
     }

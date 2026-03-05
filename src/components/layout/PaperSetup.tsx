@@ -36,6 +36,7 @@ const PAPER_LABELS: Record<PaperKey, string> = {
   Instagram: "Instagram",
   Twitter: "Twitter",
   FHD: "Full HD",
+  "Invitation Card": "Invitation Card",
 };
 
 export interface ImportedDesignData {

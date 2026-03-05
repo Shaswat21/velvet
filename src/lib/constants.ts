@@ -8,6 +8,7 @@ export type PaperKey =
   | "A3"
   | "A2"
   | "Letter"
+  | "Invitation Card"
   | "Tabloid"
   | "Mobile"
   | "Instagram"
@@ -29,6 +30,7 @@ export const PAPER_SIZES: Record<PaperKey, { w: number; h: number }> = {
   A3: getSizeFromMM(297, 420),
   A2: getSizeFromMM(420, 594),
   Letter: getSizeFromMM(215.9, 279.4),
+  "Invitation Card": { w: 1080, h: 1920 },
   Tabloid: getSizeFromMM(279.4, 431.8),
   Mobile: { w: 390, h: 700 },
   Instagram: { w: 1080, h: 1080 },
