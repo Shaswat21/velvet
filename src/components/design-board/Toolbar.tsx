@@ -46,7 +46,7 @@ import type { CanvasObject, TextObject } from "@/lib/types";
 import { FancySlider } from "./ui/FancySlider";
 import { Toggle } from "../ui/toggle";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
-import { INDIAN_LANGUAGES } from "@/hooks/useTransliteration";
+import { INDIAN_LANGUAGES, translateText } from "@/hooks/useTransliteration";
 import { loadGoogleFonts } from "@/lib/loadFonts";
 import { useEffect, useMemo, useState } from "react";
 
@@ -181,8 +181,41 @@ export const Toolbar = ({
                   <span className="text-sm font-semibold">Transliteration</span>
                   <Toggle
                     pressed={!!textObj.transliterationEnabled}
-                    onPressedChange={(pressed) => {
-                      updateSelected({ transliterationEnabled: pressed });
+                    onPressedChange={async (pressed) => {
+                      if (pressed) {
+                        const targetLang = textObj.transliterationLanguage || INDIAN_LANGUAGES[0].code;
+                        const langFonts = INDIAN_LANGUAGE_FONTS[targetLang as IndianLanguageCode];
+                        const primaryFont = langFonts?.[0]?.family;
+
+                        let newText = textObj.text;
+                        if (textObj.text && textObj.text.trim()) {
+                          const translation = await translateText(textObj.text, targetLang);
+                          if (translation) newText = translation;
+                        }
+
+                        if (langFonts) loadGoogleFonts(langFonts.map(f => f.family));
+
+                        updateSelected({
+                          transliterationEnabled: true,
+                          transliterationLanguage: targetLang,
+                          text: newText,
+                          fontFamily: primaryFont || textObj.fontFamily
+                        });
+                      } else {
+                        let newText = textObj.text;
+                        if (textObj.text && textObj.text.trim()) {
+                          const translation = await translateText(textObj.text, 'en');
+                          if (translation) newText = translation;
+                        }
+
+                        const defaultFont = FONT_GROUPS['Sans Serif']?.[0] || 'Arial';
+
+                        updateSelected({
+                          transliterationEnabled: false,
+                          text: newText,
+                          fontFamily: defaultFont
+                        });
+                      }
                     }}
                     size="sm"
                     className="h-6 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
@@ -195,7 +228,7 @@ export const Toolbar = ({
                   <span className="text-xs text-muted-foreground font-bold uppercase">Language</span>
                   <Select
                     value={textObj.transliterationLanguage || ""}
-                    onValueChange={(val) => {
+                    onValueChange={async (val) => {
                       if (!val) return;
                       const langFonts = INDIAN_LANGUAGE_FONTS[val as IndianLanguageCode];
                       const primaryFont = langFonts?.[0]?.family;
@@ -203,10 +236,18 @@ export const Toolbar = ({
                       // Pre-load fonts for the new language in the background
                       if (langFonts) loadGoogleFonts(langFonts.map(f => f.family));
 
-                      // Set the language and automatically apply the first font style
+                      // Translate existing text
+                      let newText = textObj.text;
+                      if (textObj.text && textObj.text.trim()) {
+                        const translation = await translateText(textObj.text, val);
+                        if (translation) newText = translation;
+                      }
+
+                      // Set the language, automatically apply the first font style, and update text
                       updateSelected({
                         transliterationLanguage: val,
-                        fontFamily: primaryFont || textObj.fontFamily
+                        fontFamily: primaryFont || textObj.fontFamily,
+                        text: newText
                       });
                     }}
                     disabled={!textObj.transliterationEnabled}

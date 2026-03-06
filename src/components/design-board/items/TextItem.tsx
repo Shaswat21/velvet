@@ -43,8 +43,10 @@ export const TextItem = ({
 
   const updateHeight = () => {
     if (textAreaRef.current) {
-      // Use a small scaled padding to avoid clipping and allow tight wrapping
-      const padding = 4 * zoomFactor;
+      // Use a scaled padding to avoid clipping and allow tight wrapping.
+      // Indian fonts often have taller ascenders/descenders, so give them more padding.
+      const basePadding = obj.transliterationEnabled ? 12 : 4;
+      const padding = basePadding * zoomFactor;
       textAreaRef.current.style.padding = `${padding}px`;
 
       textAreaRef.current.style.height = "0px";

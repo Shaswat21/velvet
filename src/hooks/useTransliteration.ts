@@ -61,3 +61,24 @@ export const useTransliteration = (
     setCurrentWord
   };
 };
+
+export const translateText = async (text: string, targetLanguageCode: string) => {
+  if (!text.trim()) return text;
+  
+  // Extract standard ISO code from input tools code (e.g. 'hi-t-i0-und' -> 'hi')
+  const shortCode = targetLanguageCode.split('-')[0];
+  
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${shortCode}&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    if (data && data[0]) {
+      return data[0].map((item: any) => item[0]).join('');
+    }
+    return text;
+  } catch (err) {
+    console.error("Translation error:", err);
+    return text;
+  }
+};
