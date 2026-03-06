@@ -48,7 +48,7 @@ import { Toggle } from "../ui/toggle";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import { INDIAN_LANGUAGES } from "@/hooks/useTransliteration";
 import { loadGoogleFonts } from "@/lib/loadFonts";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface ToolbarProps {
   selectedObject: CanvasObject | undefined;
@@ -132,6 +132,19 @@ export const Toolbar = ({
   const isRect = selectedObject.type === "rect";
   const rectObj = isRect ? (selectedObject as any) : null;
   const isEffectActive = rectObj?.isGlass || rectObj?.isLiquid;
+
+  // --- Font Hover Preview State ---
+  const [originalFont, setOriginalFont] = useState<string>("");
+  const [stableFont, setStableFont] = useState<string>(textObj?.fontFamily || "");
+  const [isFontSelected, setIsFontSelected] = useState(false);
+  const [isSelectOpen, setIsSelectOpen] = useState(false);
+
+  // Sync stableFont when the selected object's font changes externally, but NOT when the select is open
+  useEffect(() => {
+    if (!isSelectOpen && textObj?.fontFamily) {
+      setStableFont(textObj.fontFamily);
+    }
+  }, [textObj?.fontFamily, isSelectOpen]);
 
   return (
     <div
@@ -217,13 +230,28 @@ export const Toolbar = ({
           <div className="h-6 w-px bg-gray-300 mx-1"></div>
           {/* FONT FAMILY — shows per-language Indian fonts when transliteration is on */}
           <Select
-            value={textObj.fontFamily}
-            onValueChange={(val) => updateSelected({ fontFamily: val })}
+            value={stableFont}
+            onOpenChange={(open) => {
+              setIsSelectOpen(open);
+              if (open) {
+                setOriginalFont(textObj.fontFamily);
+                setIsFontSelected(false);
+              } else if (!isFontSelected && originalFont) {
+                // Revert to original font if closed without selecting
+                updateSelected({ fontFamily: originalFont });
+                setStableFont(originalFont);
+              }
+            }}
+            onValueChange={(val) => {
+              setIsFontSelected(true);
+              setStableFont(val);
+              updateSelected({ fontFamily: val });
+            }}
           >
             <SelectTrigger className="w-32 h-8 text-xs border-dashed bg-white">
               <SelectValue placeholder="Font" />
             </SelectTrigger>
-            <SelectContent className="max-h-80">
+            <SelectContent position="popper" className="max-h-80 w-56">
               {indianFontGroups ? (
                 // ── Indian language mode: fonts grouped by style ──
                 <>
@@ -236,7 +264,23 @@ export const Toolbar = ({
                         {style}
                       </SelectLabel>
                       {fonts.map((f) => (
-                        <SelectItem key={f.family} value={f.family} className="pl-6 py-2 leading-relaxed">
+                        <SelectItem
+                          key={f.family}
+                          value={f.family}
+                          className="pl-6 py-2 leading-relaxed"
+                          onPointerEnter={() => {
+                            if (textObj.fontFamily !== f.family) {
+                              loadGoogleFonts([f.family]);
+                              updateSelected({ fontFamily: f.family });
+                            }
+                          }}
+                          onFocus={() => {
+                            if (textObj.fontFamily !== f.family) {
+                              loadGoogleFonts([f.family]);
+                              updateSelected({ fontFamily: f.family });
+                            }
+                          }}
+                        >
                           <div className="flex items-center gap-2">
                             <span style={{ fontFamily: f.family, lineHeight: 1.8, fontSize: '14px' }}>
                               {translitLangCode ? SCRIPT_SAMPLES[translitLangCode] : f.label}
@@ -256,7 +300,23 @@ export const Toolbar = ({
                       {group}
                     </SelectLabel>
                     {fonts.map((f) => (
-                      <SelectItem key={f} value={f} className="pl-6">
+                      <SelectItem
+                        key={f}
+                        value={f}
+                        className="pl-6"
+                        onPointerEnter={() => {
+                          if (textObj.fontFamily !== f) {
+                            loadGoogleFonts([f]);
+                            updateSelected({ fontFamily: f });
+                          }
+                        }}
+                        onFocus={() => {
+                          if (textObj.fontFamily !== f) {
+                            loadGoogleFonts([f]);
+                            updateSelected({ fontFamily: f });
+                          }
+                        }}
+                      >
                         <span style={{ fontFamily: f }}>{f}</span>
                       </SelectItem>
                     ))}

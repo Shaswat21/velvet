@@ -123,20 +123,12 @@ export const useDesignBoard = (
     updates: Partial<CanvasObject>,
     saveToHistory: boolean = false,
   ) => {
-    setLocalObjects((prev) =>
-      prev.map(
-        (obj) => (obj.id === id ? { ...obj, ...updates } : obj) as CanvasObject,
-      ),
+    const updatedObjects = localObjects.map(
+      (obj) => (obj.id === id ? { ...obj, ...updates } : obj) as CanvasObject,
     );
+    setLocalObjects(updatedObjects);
     if (saveToHistory) {
-      // We defer history saving slightly or handle it on mouse up
-      // But for this function signature, we follow instruction
-      pushHistory(
-        localObjects.map(
-          (obj) =>
-            (obj.id === id ? { ...obj, ...updates } : obj) as CanvasObject,
-        ),
-      );
+      pushHistory(updatedObjects);
     }
   };
 

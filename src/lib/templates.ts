@@ -15,6 +15,27 @@ export interface Template {
   thumbnail?: string;
 }
 
+export const DEFAULT_CATEGORIES = [
+  "Social Media",
+  "Business",
+  "Print",
+  "Presentation",
+  "Invitation",
+  "Education",
+  "Marketing",
+];
+
+/**
+ * Gets unique categories from a list of templates plus defaults.
+ */
+export const getTemplateCategories = (templates: Template[]): string[] => {
+  const categories = new Set([...DEFAULT_CATEGORIES]);
+  templates.forEach((t) => {
+    if (t.category) categories.add(t.category);
+  });
+  return Array.from(categories).sort();
+};
+
 // --- 1. DEFAULT TEMPLATES (Static) ---
 // const DEFAULT_TEMPLATES: Template[] = [
 //   {
@@ -187,5 +208,6 @@ export const fetchTemplates = async (): Promise<Template[]> => {
   });
 
   // return [...DEFAULT_TEMPLATES, ...loadedTemplates];
-  return []; // Temporarily disable default templates];
+  // return []; // Temporarily disable default templates];
+  return loadedTemplates;
 };

@@ -19,7 +19,9 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Download, Loader2, Lock, Save } from "lucide-react";
+import { Download, Loader2, Lock, Save, Plus } from "lucide-react";
+import { fetchTemplates, getTemplateCategories } from "@/lib/templates";
+import { useEffect } from "react";
 
 export type ExportFormat =
   | "png"
@@ -70,9 +72,27 @@ export function ExportDialog({ onExport, trigger }: ExportDialogProps) {
   // Template State
   const [templateName, setTemplateName] = useState("");
   const [category, setCategory] = useState("Social Media");
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [isAddingNew, setIsAddingNew] = useState(false);
+  const [newCategory, setNewCategory] = useState("");
 
   const [open, setOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+
+  // Load categories when dialog opens
+  useEffect(() => {
+    if (open) {
+      const loadCats = async () => {
+        const templates = await fetchTemplates();
+        const cats = getTemplateCategories(templates);
+        setAvailableCategories(cats);
+        if (!category && cats.length > 0) {
+          setCategory(cats[0]);
+        }
+      };
+      loadCats();
+    }
+  }, [open]);
 
   // --- LOGIC ---
   const isTemplate = format === "velvet" || format === "template";
@@ -100,8 +120,8 @@ export function ExportDialog({ onExport, trigger }: ExportDialogProps) {
       format === "json" || format === "velvet" || isTemplate
         ? true
         : isCompressDisabled
-        ? false
-        : compress;
+          ? false
+          : compress;
 
     await onExport({
       format,
@@ -109,12 +129,21 @@ export function ExportDialog({ onExport, trigger }: ExportDialogProps) {
       compress: shouldCompress,
       templateMeta: isTemplate
         ? {
-            id: templateName.toLowerCase().replace(/\s+/g, "-"),
-            name: templateName,
-            category,
-          }
+          id: templateName.toLowerCase().replace(/\s+/g, "-"),
+          name: templateName,
+          category: isAddingNew ? newCategory : category,
+        }
         : undefined,
     });
+
+    if (isAddingNew && newCategory.trim()) {
+      setAvailableCategories((prev) =>
+        Array.from(new Set([...prev, newCategory.trim()])).sort(),
+      );
+      setCategory(newCategory.trim());
+      setIsAddingNew(false);
+      setNewCategory("");
+    }
 
     setIsExporting(false);
     setOpen(false);
@@ -192,17 +221,45 @@ export function ExportDialog({ onExport, trigger }: ExportDialogProps) {
                   <Label htmlFor="t-cat" className="text-right">
                     Category
                   </Label>
-                  <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Social Media">Social Media</SelectItem>
-                      <SelectItem value="Business">Business</SelectItem>
-                      <SelectItem value="Print">Print</SelectItem>
-                      <SelectItem value="Presentation">Presentation</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="col-span-3 flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      {isAddingNew ? (
+                        <Input
+                          value={newCategory}
+                          onChange={(e) => setNewCategory(e.target.value)}
+                          placeholder="New category name"
+                          className="flex-1"
+                          autoFocus
+                        />
+                      ) : (
+                        <Select value={category} onValueChange={setCategory}>
+                          <SelectTrigger className="flex-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableCategories.map((cat) => (
+                              <SelectItem key={cat} value={cat}>
+                                {cat}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className={isAddingNew ? "text-blue-600" : ""}
+                        onClick={() => setIsAddingNew(!isAddingNew)}
+                        title={isAddingNew ? "Back to list" : "Add new category"}
+                      >
+                        {isAddingNew ? (
+                          <Plus className="h-4 w-4 rotate-45" />
+                        ) : (
+                          <Plus className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
             </>
@@ -264,8 +321,8 @@ export function ExportDialog({ onExport, trigger }: ExportDialogProps) {
             {isExporting
               ? "Processing..."
               : isTemplate
-              ? "Save Template"
-              : "Download"}
+                ? "Save Template"
+                : "Download"}
           </Button>
         </DialogFooter>
       </DialogContent>

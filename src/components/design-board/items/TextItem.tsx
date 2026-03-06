@@ -1,4 +1,4 @@
-import { useRef, useLayoutEffect, useState } from "react";
+import { useRef, useLayoutEffect, useState, useEffect } from "react";
 import { TransformWrapper } from "./TransformWrapper";
 import type { TextObject, ToolType } from "@/lib/types";
 import { useTransliteration } from "@/hooks/useTransliteration";
@@ -41,17 +41,25 @@ export const TextItem = ({
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const zoomFactor = zoom / 100;
 
-  useLayoutEffect(() => {
+  const updateHeight = () => {
     if (textAreaRef.current) {
+      // Use a small scaled padding to avoid clipping and allow tight wrapping
+      const padding = 4 * zoomFactor;
+      textAreaRef.current.style.padding = `${padding}px`;
+
       textAreaRef.current.style.height = "0px";
       const scrollHeight = textAreaRef.current.scrollHeight;
       textAreaRef.current.style.height = `${scrollHeight}px`;
 
       const calculatedHeight = scrollHeight / zoomFactor;
-      if (Math.abs(obj.height - calculatedHeight) > 1) {
+      if (Math.abs(obj.height - calculatedHeight) > 0.5) {
         onUpdate(obj.id, { height: calculatedHeight });
       }
     }
+  };
+
+  useLayoutEffect(() => {
+    updateHeight();
   }, [
     obj.text,
     obj.width,
@@ -64,8 +72,16 @@ export const TextItem = ({
     obj.textTransform,
     obj.letterSpacing,
     obj.lineHeight,
+    obj.textAlign,
     zoom,
   ]);
+
+  // Recalculate height when fonts are loaded (crucial for preview)
+  useEffect(() => {
+    document.fonts.ready.then(() => {
+      updateHeight();
+    });
+  }, [obj.fontFamily]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (tool !== "select") return;
@@ -203,7 +219,7 @@ export const TextItem = ({
           readOnly={isDisabled}
           className={`
             w-full bg-transparent resize-none overflow-hidden leading-normal
-            focus:outline-none outline-none border-none p-1 block rounded-[10px]
+            focus:outline-none outline-none border-none block
             ${
               /* Cursor Logic: Text cursor only if selected, not locked, and not grouped */ ""
             }
